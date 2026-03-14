@@ -30,6 +30,7 @@ struct DashboardView: View {
     @State private var trialCount: Int = 0
     @State private var dayStreak: Int = 847
     @State private var patternSnapshot: PatternSnapshot = .empty
+    @State private var trialMetrics: DashboardTrialMetrics = .empty
     @State private var pulseQuestions: Bool = false
     @State private var pulseTrials: Bool = false
     @State private var checkinHintVisible: Bool = false
@@ -71,8 +72,8 @@ struct DashboardView: View {
         .onChange(of: questions.count) { _, newValue in
             questionCount = newValue
         }
-        .onChange(of: trials.count) { _, newValue in
-            trialCount = newValue
+        .onChange(of: trials.count) { _, _ in
+            refreshDashboardMetrics()
         }
         .onChange(of: healthLogs.count) { _, _ in
             refreshDashboardMetrics()
@@ -374,6 +375,10 @@ struct DashboardView: View {
                     .font(bodyFont(10))
                     .foregroundStyle(mutedSand)
 
+                Text(trialMetrics.summary)
+                    .font(bodyFont(10))
+                    .foregroundStyle(trialMetrics.accentColor)
+
                 Text(patternSnapshot.recommendedAction)
                     .font(bodyFont(10))
                     .foregroundStyle(patternAccentColor)
@@ -418,7 +423,7 @@ struct DashboardView: View {
                 pulse: pulseTrials,
                 value: "\(trialCount)",
                 label: "Trials",
-                subtitle: "Daily logs"
+                subtitle: trialMetrics.statsSubtitle
             )
         }
         .padding(.horizontal, 16)
@@ -465,7 +470,10 @@ struct DashboardView: View {
     }
 
     private var patternSummary: String {
-        patternSnapshot.summary
+        if trialMetrics.hasStructuredLogs {
+            return "\(patternSnapshot.summary) \(trialMetrics.statsSubtitle)"
+        }
+        return patternSnapshot.summary
     }
 
     private var patternAccentColor: Color {
@@ -593,6 +601,95 @@ struct DashboardView: View {
         questionCount = questions.count
         trialCount = trials.count
         patternSnapshot = PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
+        trialMetrics = buildTrialMetrics(from: trials)
+    }
+
+    private func buildTrialMetrics(from trials: [DailyTrial]) -> DashboardTrialMetrics {
+        let structuredTrials = trials.map(decodeTrial)
+        guard !structuredTrials.isEmpty else { return .empty }
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let sevenDaysAgo = Calendar.current.date(byAdding: .day, value: -6, to: today) ?? today
+        let recentTrials = structuredTrials.filter { trial in
+            let day = Calendar.current.startOfDay(for: trial.logDate)
+            return day >= sevenDaysAgo && day <= today
+        }
+
+        let green = recentTrials.filter { $0.triageLevel == .green }.count
+        let amber = recentTrials.filter { $0.triageLevel == .amber }.count
+        let red = recentTrials.filter { $0.triageLevel == .red }.count
+        let medicationConfirmed = recentTrials.filter(\.medicationConfirmed).count
+        let noteCount = recentTrials.filter {
+            !$0.doctorNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+            $0.doctorNote != "No doctor note"
+        }.count
+
+        let summary: String
+        if red > 0 {
+            summary = "\(red) red log\(red == 1 ? "" : "s") in the last 7 days. Review the most recent symptom notes."
+        } else if amber > 0 {
+            summary = "\(amber) amber log\(amber == 1 ? "" : "s"), \(medicationConfirmed)/\(max(recentTrials.count, 1)) medication confirmations captured."
+        } else {
+            summary = "\(green) green log\(green == 1 ? "" : "s"), \(medicationConfirmed)/\(max(recentTrials.count, 1)) medication confirmations, \(noteCount) doctor note\(noteCount == 1 ? "" : "s")."
+        }
+
+        let statsSubtitle: String
+        if red > 0 {
+            statsSubtitle = "\(red) red · \(amber) amber"
+        } else if recentTrials.isEmpty {
+            statsSubtitle = "Daily logs"
+        } else {
+            statsSubtitle = "\(green) green · \(medicationConfirmed) meds"
+        }
+
+        let accentColor: Color
+        if red > 0 {
+            accentColor = Color(red: 0.96, green: 0.57, blue: 0.57)
+        } else if amber > 0 {
+            accentColor = sunriseOrange
+        } else {
+            accentColor = sageGreen
+        }
+
+        return DashboardTrialMetrics(
+            hasStructuredLogs: true,
+            summary: summary,
+            statsSubtitle: statsSubtitle,
+            accentColor: accentColor
+        )
+    }
+
+    private func decodeTrial(_ trial: DailyTrial) -> DashboardDecodedTrial {
+        if trial.nextImprovement.hasPrefix("LOOK_TRIAL_V2|") {
+            let json = String(trial.nextImprovement.dropFirst("LOOK_TRIAL_V2|".count))
+            if let data = json.data(using: .utf8),
+               let payload = try? JSONDecoder().decode(DashboardTrialPayload.self, from: data) {
+                return DashboardDecodedTrial(
+                    logDate: payload.logDate,
+                    triageLevel: DashboardTriage(rawValue: payload.triageLevel) ?? fallbackTriage(from: trial.rating),
+                    doctorNote: payload.doctorNote,
+                    medicationConfirmed: payload.medicationConfirmed
+                )
+            }
+        }
+
+        return DashboardDecodedTrial(
+            logDate: trial.createdAt,
+            triageLevel: fallbackTriage(from: trial.rating),
+            doctorNote: trial.friction,
+            medicationConfirmed: false
+        )
+    }
+
+    private func fallbackTriage(from rating: Int) -> DashboardTriage {
+        switch rating {
+        case 4...5:
+            return .green
+        case 3:
+            return .amber
+        default:
+            return .red
+        }
     }
 
     private func loadTodayState() {
@@ -668,6 +765,44 @@ struct DashboardView: View {
             return Color(red: 0.96, green: 0.57, blue: 0.57)
         }
     }
+}
+
+private struct DashboardTrialMetrics {
+    let hasStructuredLogs: Bool
+    let summary: String
+    let statsSubtitle: String
+    let accentColor: Color
+
+    static let empty = DashboardTrialMetrics(
+        hasStructuredLogs: false,
+        summary: "Structured trial insights appear after your first daily log.",
+        statsSubtitle: "Daily logs",
+        accentColor: mutedSand
+    )
+}
+
+private struct DashboardTrialPayload: Codable {
+    let triageLevel: String
+    let q1: Int
+    let q2: Int
+    let q3: Int
+    let q4: Int
+    let doctorNote: String
+    let medicationConfirmed: Bool
+    let logDate: Date
+}
+
+private struct DashboardDecodedTrial {
+    let logDate: Date
+    let triageLevel: DashboardTriage
+    let doctorNote: String
+    let medicationConfirmed: Bool
+}
+
+private enum DashboardTriage: String {
+    case green
+    case amber
+    case red
 }
 
 private struct LOOKCard: ViewModifier {
