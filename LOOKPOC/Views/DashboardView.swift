@@ -31,6 +31,7 @@ struct DashboardView: View {
     @State private var dayStreak: Int = 847
     @State private var patternSnapshot: PatternSnapshot = .empty
     @State private var trialMetrics: DashboardTrialMetrics = .empty
+    @State private var medicationHubSnapshot: DashboardMedicationSnapshot = .empty
     @State private var pulseQuestions: Bool = false
     @State private var pulseTrials: Bool = false
     @State private var checkinHintVisible: Bool = false
@@ -68,6 +69,9 @@ struct DashboardView: View {
             loadTodayState()
             pulseQuestions = true
             pulseTrials = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            refreshDashboardMetrics()
         }
         .onChange(of: questions.count) { _, newValue in
             questionCount = newValue
@@ -266,6 +270,12 @@ struct DashboardView: View {
                         .font(bodyFont(12))
                         .fontWeight(.light)
                         .foregroundStyle(mutedSand)
+
+                    if medicationHubSnapshot.hasMedicationData {
+                        Text(medicationHubSnapshot.summary)
+                            .font(bodyFont(10))
+                            .foregroundStyle(medicationHubSnapshot.accentColor)
+                    }
                 }
 
                 Spacer()
@@ -379,6 +389,12 @@ struct DashboardView: View {
                     .font(bodyFont(10))
                     .foregroundStyle(trialMetrics.accentColor)
 
+                if medicationHubSnapshot.hasMedicationData {
+                    Text(medicationHubSnapshot.detail)
+                        .font(bodyFont(10))
+                        .foregroundStyle(medicationHubSnapshot.accentColor)
+                }
+
                 Text(patternSnapshot.recommendedAction)
                     .font(bodyFont(10))
                     .foregroundStyle(patternAccentColor)
@@ -423,7 +439,7 @@ struct DashboardView: View {
                 pulse: pulseTrials,
                 value: "\(trialCount)",
                 label: "Trials",
-                subtitle: trialMetrics.statsSubtitle
+                subtitle: combinedTrialSubtitle
             )
         }
         .padding(.horizontal, 16)
@@ -474,6 +490,13 @@ struct DashboardView: View {
             return "\(patternSnapshot.summary) \(trialMetrics.statsSubtitle)"
         }
         return patternSnapshot.summary
+    }
+
+    private var combinedTrialSubtitle: String {
+        if medicationHubSnapshot.hasMedicationData {
+            return "\(trialMetrics.statsSubtitle) · \(medicationHubSnapshot.shortLabel)"
+        }
+        return trialMetrics.statsSubtitle
     }
 
     private var patternAccentColor: Color {
@@ -602,6 +625,7 @@ struct DashboardView: View {
         trialCount = trials.count
         patternSnapshot = PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
         trialMetrics = buildTrialMetrics(from: trials)
+        medicationHubSnapshot = loadMedicationHubSnapshot()
     }
 
     private func buildTrialMetrics(from trials: [DailyTrial]) -> DashboardTrialMetrics {
@@ -690,6 +714,49 @@ struct DashboardView: View {
         default:
             return .red
         }
+    }
+
+    private func loadMedicationHubSnapshot() -> DashboardMedicationSnapshot {
+        let defaults = UserDefaults.standard
+        let medications = (try? defaults.dashboardDecode([DashboardMedicationRecord].self, forKey: dashboardMedicationKey)) ?? []
+        let notificationLog = (try? defaults.dashboardDecode([DashboardNotificationRecord].self, forKey: dashboardNotificationLogKey)) ?? []
+        let pendingAcknowledged = defaults.bool(forKey: dashboardPendingAcknowledgedKey)
+
+        guard !medications.isEmpty || !notificationLog.isEmpty || pendingAcknowledged else {
+            return .empty
+        }
+
+        let activeMedications = medications.filter(\.reminderActive).count
+        let acknowledgedCount = notificationLog.filter { $0.status == .acknowledged }.count
+        let pendingCount = notificationLog.filter { $0.status == .pending }.count
+        let missedCount = notificationLog.filter { $0.status == .missed }.count
+
+        let accentColor: Color
+        if pendingCount > 0 && !pendingAcknowledged {
+            accentColor = sunriseOrange
+        } else if missedCount > 0 {
+            accentColor = Color(red: 0.96, green: 0.57, blue: 0.57)
+        } else {
+            accentColor = healTeal
+        }
+
+        let summary = "\(activeMedications) active reminder\(activeMedications == 1 ? "" : "s") · \(acknowledgedCount) acknowledged"
+        let detail: String
+        if pendingCount > 0 && !pendingAcknowledged {
+            detail = "\(pendingCount) reminder\(pendingCount == 1 ? "" : "s") still pending in Medication."
+        } else if missedCount > 0 {
+            detail = "\(missedCount) missed reminder\(missedCount == 1 ? "" : "s") logged. Review timing today."
+        } else {
+            detail = "Medication tab is configured for daily follow-through."
+        }
+
+        return DashboardMedicationSnapshot(
+            hasMedicationData: true,
+            summary: summary,
+            detail: detail,
+            shortLabel: "\(activeMedications) active meds",
+            accentColor: accentColor
+        )
     }
 
     private func loadTodayState() {
@@ -781,6 +848,22 @@ private struct DashboardTrialMetrics {
     )
 }
 
+private struct DashboardMedicationSnapshot {
+    let hasMedicationData: Bool
+    let summary: String
+    let detail: String
+    let shortLabel: String
+    let accentColor: Color
+
+    static let empty = DashboardMedicationSnapshot(
+        hasMedicationData: false,
+        summary: "",
+        detail: "",
+        shortLabel: "",
+        accentColor: healTeal
+    )
+}
+
 private struct DashboardTrialPayload: Codable {
     let triageLevel: String
     let q1: Int
@@ -805,6 +888,32 @@ private enum DashboardTriage: String {
     case red
 }
 
+private struct DashboardMedicationRecord: Codable {
+    let id: UUID
+    let name: String
+    let dose: String
+    let times: [String]
+    let reminderActive: Bool
+}
+
+private struct DashboardNotificationRecord: Codable {
+    let id: UUID
+    let icon: String
+    let title: String
+    let time: String
+    let status: DashboardNotificationStatus
+}
+
+private enum DashboardNotificationStatus: String, Codable {
+    case acknowledged
+    case missed
+    case pending
+}
+
+private let dashboardMedicationKey = "triallab.medications"
+private let dashboardNotificationLogKey = "triallab.notificationLog"
+private let dashboardPendingAcknowledgedKey = "triallab.pendingAcknowledged"
+
 private struct LOOKCard: ViewModifier {
     let background: Color
     let borderColor: Color
@@ -820,5 +929,14 @@ private struct LOOKCard: ViewModifier {
                     .stroke(borderColor, lineWidth: 0.5)
             )
             .padding(.horizontal, 16)
+    }
+}
+
+private extension UserDefaults {
+    func dashboardDecode<T: Decodable>(_ type: T.Type, forKey key: String) throws -> T {
+        guard let data = data(forKey: key) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        return try JSONDecoder().decode(T.self, from: data)
     }
 }
