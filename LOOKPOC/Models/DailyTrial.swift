@@ -5,6 +5,7 @@ import SwiftData
 final class DailyTrial {
     @Attribute(.unique) var id: UUID
     var createdAt: Date
+    var updatedAt: Date
     var rating: Int
     var whatWorked: String
     var friction: String
@@ -13,6 +14,7 @@ final class DailyTrial {
     init(
         id: UUID = UUID(),
         createdAt: Date = .now,
+        updatedAt: Date = .now,
         rating: Int,
         whatWorked: String,
         friction: String,
@@ -20,6 +22,7 @@ final class DailyTrial {
     ) {
         self.id = id
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
         self.rating = rating
         self.whatWorked = whatWorked
         self.friction = friction

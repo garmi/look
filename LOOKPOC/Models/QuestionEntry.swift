@@ -6,6 +6,7 @@ final class QuestionEntry {
     @Attribute(.unique) var id: UUID
     var question: String
     var createdAt: Date
+    var updatedAt: Date
     var categoryRaw: String
     var aiSummary: String
     var recommendation: String
@@ -18,6 +19,7 @@ final class QuestionEntry {
         id: UUID = UUID(),
         question: String,
         createdAt: Date = .now,
+        updatedAt: Date = .now,
         category: TriageCategory,
         aiSummary: String,
         recommendation: String,
@@ -27,6 +29,7 @@ final class QuestionEntry {
         self.id = id
         self.question = question
         self.createdAt = createdAt
+        self.updatedAt = updatedAt
         self.categoryRaw = category.rawValue
         self.aiSummary = aiSummary
         self.recommendation = recommendation

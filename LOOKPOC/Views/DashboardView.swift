@@ -11,8 +11,10 @@ private let mutedSand = Color(red: 0.71, green: 0.66, blue: 0.60)
 private let parchment = Color(red: 0.98, green: 0.98, blue: 0.97)
 
 struct DashboardView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \QuestionEntry.createdAt, order: .reverse) private var questions: [QuestionEntry]
     @Query(sort: \DailyTrial.createdAt, order: .reverse) private var trials: [DailyTrial]
+    @Query(sort: \DailyHealthLog.dayKey, order: .reverse) private var healthLogs: [DailyHealthLog]
     @Query private var profiles: [UserProfile]
 
     @State private var checkinOpen: Bool = false
@@ -27,6 +29,7 @@ struct DashboardView: View {
     @State private var questionCount: Int = 0
     @State private var trialCount: Int = 0
     @State private var dayStreak: Int = 847
+    @State private var patternSnapshot: PatternSnapshot = .empty
     @State private var pulseQuestions: Bool = false
     @State private var pulseTrials: Bool = false
     @State private var checkinHintVisible: Bool = false
@@ -60,8 +63,8 @@ struct DashboardView: View {
         }
         .background(parchment.ignoresSafeArea())
         .onAppear {
-            questionCount = questions.count
-            trialCount = trials.count
+            refreshDashboardMetrics()
+            loadTodayState()
             pulseQuestions = true
             pulseTrials = true
         }
@@ -70,6 +73,10 @@ struct DashboardView: View {
         }
         .onChange(of: trials.count) { _, newValue in
             trialCount = newValue
+        }
+        .onChange(of: healthLogs.count) { _, _ in
+            refreshDashboardMetrics()
+            loadTodayState()
         }
     }
 
@@ -164,6 +171,7 @@ struct DashboardView: View {
                             background: sageGreen.opacity(0.15)
                         ) {
                             submitCheckin(
+                                status: .allGood,
                                 response: "Logged. Keep it up. Your consistency matters.",
                                 color: Color(red: 0.49, green: 0.78, blue: 0.63)
                             )
@@ -175,6 +183,7 @@ struct DashboardView: View {
                             background: sunriseOrange.opacity(0.15)
                         ) {
                             submitCheckin(
+                                status: .unsure,
                                 response: "Noted. Consider calling your transplant coordinator today.",
                                 color: Color(red: 0.96, green: 0.76, blue: 0.50)
                             )
@@ -186,6 +195,7 @@ struct DashboardView: View {
                             background: Color.red.opacity(0.12)
                         ) {
                             submitCheckin(
+                                status: .help,
                                 response: "Please contact your doctor or go to your nearest hospital now.",
                                 color: Color(red: 0.96, green: 0.57, blue: 0.57)
                             )
@@ -321,7 +331,7 @@ struct DashboardView: View {
                 }
             }
 
-            Text(medTaken ? "7 days ✦  Medication confirmed" : "7 days ✦")
+            Text(streakLabel)
                 .font(bodyFont(11))
                 .foregroundStyle(mutedSand)
                 .animation(.easeIn, value: medTaken)
@@ -359,6 +369,14 @@ struct DashboardView: View {
                     .font(bodyFont(11))
                     .fontWeight(.light)
                     .foregroundStyle(sunriseOrange)
+
+                Text(patternSummary)
+                    .font(bodyFont(10))
+                    .foregroundStyle(mutedSand)
+
+                Text(patternSnapshot.recommendedAction)
+                    .font(bodyFont(10))
+                    .foregroundStyle(patternAccentColor)
             }
 
             Text("\(insightIndex + 1) / 7")
@@ -441,6 +459,26 @@ struct DashboardView: View {
         return formattedDate()
     }
 
+    private var streakLabel: String {
+        let base = "\(max(patternSnapshot.medicationStreak, 0)) days ✦"
+        return medTaken ? "\(base)  Medication confirmed" : base
+    }
+
+    private var patternSummary: String {
+        patternSnapshot.summary
+    }
+
+    private var patternAccentColor: Color {
+        switch patternSnapshot.riskTier {
+        case .green:
+            return sageGreen
+        case .amber:
+            return sunriseOrange
+        case .red:
+            return Color(red: 0.96, green: 0.57, blue: 0.57)
+        }
+    }
+
     private func displayFont(_ size: CGFloat) -> Font {
         if UIFont(name: "DM Serif Display", size: size) != nil {
             return .custom("DM Serif Display", size: size)
@@ -461,23 +499,39 @@ struct DashboardView: View {
         return formatter.string(from: Date())
     }
 
-    private func submitCheckin(response: String, color: Color) {
+    private func submitCheckin(status: CheckinStatus, response: String, color: Color) {
+        upsertTodayLog { log in
+            log.checkinCompletedAt = .now
+            log.checkinStatus = status
+            log.updatedAt = .now
+        }
+
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             checkinDone = true
             checkinResponse = response
             checkinColor = color
         }
+
+        refreshDashboardMetrics()
     }
 
     private func confirmMedication() {
         guard !medTaken else { return }
         let impact = UIImpactFeedbackGenerator(style: .medium)
         impact.impactOccurred()
-        medicationConfirmedAt = .now
+        let confirmationTime = Date()
+        medicationConfirmedAt = confirmationTime
+
+        upsertTodayLog { log in
+            log.medicationConfirmedAt = confirmationTime
+            log.updatedAt = .now
+        }
+
         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
             medTaken = true
         }
         showMedHint = false
+        refreshDashboardMetrics()
     }
 
     private func capsuleColor(for index: Int) -> Color {
@@ -533,6 +587,86 @@ struct DashboardView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
+    }
+
+    private func refreshDashboardMetrics() {
+        questionCount = questions.count
+        trialCount = trials.count
+        patternSnapshot = PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
+    }
+
+    private func loadTodayState() {
+        guard let todayLog = logForToday() else {
+            medTaken = false
+            medicationConfirmedAt = nil
+            checkinDone = false
+            checkinResponse = ""
+            checkinColor = .clear
+            return
+        }
+
+        medTaken = todayLog.medicationConfirmedAt != nil
+        medicationConfirmedAt = todayLog.medicationConfirmedAt
+
+        if let status = todayLog.checkinStatus {
+            checkinDone = true
+            checkinResponse = checkinResponse(for: status)
+            checkinColor = checkinColor(for: status)
+        } else {
+            checkinDone = false
+            checkinResponse = ""
+            checkinColor = .clear
+        }
+    }
+
+    private func upsertTodayLog(update: (DailyHealthLog) -> Void) {
+        let log = logForToday() ?? DailyHealthLog(dayKey: dayKey(for: Date()))
+        if logForToday() == nil {
+            modelContext.insert(log)
+        }
+        update(log)
+        try? modelContext.save()
+    }
+
+    private func logForToday() -> DailyHealthLog? {
+        let todayKey = dayKey(for: Date())
+        return healthLogs.first(where: { $0.dayKey == todayKey })
+    }
+
+    private func dayKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
+    }
+
+    private func dateFromDayKey(_ dayKey: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: dayKey)
+    }
+
+    private func checkinResponse(for status: CheckinStatus) -> String {
+        switch status {
+        case .allGood:
+            return "Logged. Keep it up. Your consistency matters."
+        case .unsure:
+            return "Noted. Consider calling your transplant coordinator today."
+        case .help:
+            return "Please contact your doctor or go to your nearest hospital now."
+        }
+    }
+
+    private func checkinColor(for status: CheckinStatus) -> Color {
+        switch status {
+        case .allGood:
+            return Color(red: 0.49, green: 0.78, blue: 0.63)
+        case .unsure:
+            return Color(red: 0.96, green: 0.76, blue: 0.50)
+        case .help:
+            return Color(red: 0.96, green: 0.57, blue: 0.57)
+        }
     }
 }
 

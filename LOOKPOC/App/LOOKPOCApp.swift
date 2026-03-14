@@ -7,7 +7,9 @@ struct LOOKPOCApp: App {
         let schema = Schema([
             UserProfile.self,
             QuestionEntry.self,
-            DailyTrial.self
+            DailyTrial.self,
+            DailyHealthLog.self,
+            SyncSettings.self
         ])
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
