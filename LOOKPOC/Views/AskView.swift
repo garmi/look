@@ -12,66 +12,70 @@ struct AskView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("Ask a Question") {
-                    TextEditor(text: $questionText)
-                        .frame(minHeight: 110)
-                        .overlay(alignment: .topLeading) {
-                            if questionText.isEmpty {
-                                Text("Type your question...")
-                                    .foregroundStyle(.secondary)
-                                    .padding(.top, 8)
-                                    .padding(.leading, 5)
-                            }
-                        }
+            VStack(spacing: 0) {
+                LOOKNavBar(pageTitle: "Ask", showNotificationDot: false)
 
-                    Button("Analyze and Save") {
-                        submitQuestion()
-                    }
-                    .disabled(questionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-
-                if let latestResult {
-                    Section("Latest Result") {
-                        VStack(alignment: .leading, spacing: 8) {
-                            categoryPill(latestResult.category)
-                            Text(latestResult.summary)
-                            Text(latestResult.recommendation)
-                                .font(.subheadline)
-                            Text(latestResult.safetyNote)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-
-                Section("Recent Questions") {
-                    if history.isEmpty {
-                        Text("No questions saved yet.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(Array(history.prefix(20))) { item in
-                            VStack(alignment: .leading, spacing: 6) {
-                                HStack {
-                                    categoryPill(item.category)
-                                    Spacer()
-                                    Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.caption)
+                List {
+                    Section("Ask a Question") {
+                        TextEditor(text: $questionText)
+                            .frame(minHeight: 110)
+                            .overlay(alignment: .topLeading) {
+                                if questionText.isEmpty {
+                                    Text("Type your question...")
                                         .foregroundStyle(.secondary)
+                                        .padding(.top, 8)
+                                        .padding(.leading, 5)
                                 }
-                                Text(item.question)
+                            }
+
+                        Button("Analyze and Save") {
+                            submitQuestion()
+                        }
+                        .disabled(questionText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+
+                    if let latestResult {
+                        Section("Latest Result") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                categoryPill(latestResult.category)
+                                Text(latestResult.summary)
+                                Text(latestResult.recommendation)
                                     .font(.subheadline)
-                                Text(item.recommendation)
+                                Text(latestResult.safetyNote)
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
                             .padding(.vertical, 4)
                         }
                     }
+
+                    Section("Recent Questions") {
+                        if history.isEmpty {
+                            Text("No questions saved yet.")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(Array(history.prefix(20))) { item in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        categoryPill(item.category)
+                                        Spacer()
+                                        Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Text(item.question)
+                                        .font(.subheadline)
+                                    Text(item.recommendation)
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
                 }
             }
-            .navigationTitle("Ask")
+            .navigationBarHidden(true)
         }
     }
 

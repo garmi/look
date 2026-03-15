@@ -17,6 +17,9 @@ targets:
       path: LOOKPOC/Info.plist
       properties:
         CFBundleDisplayName: LOOK POC
+        NSCameraUsageDescription: LOOK uses your camera to photograph blood reports and prescriptions for automatic data extraction.
+        NSPhotoLibraryUsageDescription: LOOK accesses your photos to upload blood reports and prescriptions.
+        NSPhotoLibraryAddUsageDescription: LOOK may save processed documents to your photo library.
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

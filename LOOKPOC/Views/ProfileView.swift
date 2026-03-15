@@ -14,159 +14,194 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if let profile = profiles.first {
-                    Section("Your Context") {
-                        TextField(
-                            "Name (optional)",
-                            text: Binding(
-                                get: { profile.name },
-                                set: { newValue in
-                                    profile.name = newValue
-                                    profile.updatedAt = .now
-                                    try? modelContext.save()
-                                }
-                            )
-                        )
+            VStack(spacing: 0) {
+                LOOKNavBar(pageTitle: "Profile", showNotificationDot: false)
 
-                        Picker(
-                            "Stage",
-                            selection: Binding(
-                                get: { profile.stage },
-                                set: { newValue in
-                                    profile.stage = newValue
-                                    try? modelContext.save()
-                                }
+                List {
+                    if let profile = profiles.first {
+                        Section("Your Context") {
+                            TextField(
+                                "Name (optional)",
+                                text: Binding(
+                                    get: { profile.name },
+                                    set: { newValue in
+                                        profile.name = newValue
+                                        profile.updatedAt = .now
+                                        try? modelContext.save()
+                                    }
+                                )
                             )
-                        ) {
-                            ForEach(PatientStage.allCases) { stage in
-                                Text(stage.rawValue).tag(stage)
+
+                            Picker(
+                                "Stage",
+                                selection: Binding(
+                                    get: { profile.stage },
+                                    set: { newValue in
+                                        profile.stage = newValue
+                                        try? modelContext.save()
+                                    }
+                                )
+                            ) {
+                                ForEach(PatientStage.allCases) { stage in
+                                    Text(stage.rawValue).tag(stage)
+                                }
+                            }
+
+                            Picker(
+                                "City",
+                                selection: Binding(
+                                    get: { profile.city },
+                                    set: { newValue in
+                                        profile.city = newValue
+                                        try? modelContext.save()
+                                    }
+                                )
+                            ) {
+                                ForEach(CityChoice.allCases) { city in
+                                    Text(city.rawValue).tag(city)
+                                }
+                            }
+
+                            Picker(
+                                "Language",
+                                selection: Binding(
+                                    get: { profile.language },
+                                    set: { newValue in
+                                        profile.language = newValue
+                                        try? modelContext.save()
+                                    }
+                                )
+                            ) {
+                                ForEach(LanguageChoice.allCases) { language in
+                                    Text(language.rawValue).tag(language)
+                                }
                             }
                         }
 
-                        Picker(
-                            "City",
-                            selection: Binding(
-                                get: { profile.city },
-                                set: { newValue in
-                                    profile.city = newValue
+                        if let syncSettings = syncSettings {
+                            Section {
+                                TextField(
+                                    "Supabase URL",
+                                    text: Binding(
+                                        get: { syncSettings.supabaseURL },
+                                        set: { newValue in
+                                            syncSettings.supabaseURL = newValue
+                                            try? modelContext.save()
+                                        }
+                                    )
+                                )
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+
+                                TextField(
+                                    "Supabase anon key",
+                                    text: Binding(
+                                        get: { syncSettings.anonKey },
+                                        set: { newValue in
+                                            syncSettings.anonKey = newValue
+                                            try? modelContext.save()
+                                        }
+                                    )
+                                )
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+
+                                TextField(
+                                    "Shared workspace ID",
+                                    text: Binding(
+                                        get: { syncSettings.workspaceID },
+                                        set: { newValue in
+                                            syncSettings.workspaceID = newValue
+                                            try? modelContext.save()
+                                        }
+                                    )
+                                )
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+
+                                Toggle(
+                                    "Auto-sync ready",
+                                    isOn: Binding(
+                                        get: { syncSettings.autoSyncEnabled },
+                                        set: { newValue in
+                                            syncSettings.autoSyncEnabled = newValue
+                                            try? modelContext.save()
+                                        }
+                                    )
+                                )
+
+                                Button("Generate New Workspace ID") {
+                                    syncSettings.workspaceID = UUID().uuidString.lowercased()
                                     try? modelContext.save()
                                 }
-                            )
-                        ) {
-                            ForEach(CityChoice.allCases) { city in
-                                Text(city.rawValue).tag(city)
+
+                                Button(syncInProgress ? "Syncing..." : "Sync Now") {
+                                    Task {
+                                        await runSync(with: syncSettings)
+                                    }
+                                }
+                                .disabled(syncInProgress || !syncSettings.isConfigured)
+
+                                if let lastSyncAt = syncSettings.lastSyncAt {
+                                    Text("Last sync: \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Text(syncFeedback.isEmpty ? syncSettings.lastSyncMessage : syncFeedback)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            } header: {
+                                Text("Cloud Sync")
+                            } footer: {
+                                Text("Use the same Supabase URL, anon key, and workspace ID on both Mac and iPhone to sync one shared POC workspace.")
                             }
                         }
 
-                        Picker(
-                            "Language",
-                            selection: Binding(
-                                get: { profile.language },
-                                set: { newValue in
-                                    profile.language = newValue
-                                    try? modelContext.save()
-                                }
-                            )
-                        ) {
-                            ForEach(LanguageChoice.allCases) { language in
-                                Text(language.rawValue).tag(language)
-                            }
-                        }
-                    }
-
-                    if let syncSettings = syncSettings {
-                        Section {
-                            TextField(
-                                "Supabase URL",
-                                text: Binding(
-                                    get: { syncSettings.supabaseURL },
-                                    set: { newValue in
-                                        syncSettings.supabaseURL = newValue
-                                        try? modelContext.save()
-                                    }
-                                )
-                            )
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                            TextField(
-                                "Supabase anon key",
-                                text: Binding(
-                                    get: { syncSettings.anonKey },
-                                    set: { newValue in
-                                        syncSettings.anonKey = newValue
-                                        try? modelContext.save()
-                                    }
-                                )
-                            )
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                            TextField(
-                                "Shared workspace ID",
-                                text: Binding(
-                                    get: { syncSettings.workspaceID },
-                                    set: { newValue in
-                                        syncSettings.workspaceID = newValue
-                                        try? modelContext.save()
-                                    }
-                                )
-                            )
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-
-                            Toggle(
-                                "Auto-sync ready",
-                                isOn: Binding(
-                                    get: { syncSettings.autoSyncEnabled },
-                                    set: { newValue in
-                                        syncSettings.autoSyncEnabled = newValue
-                                        try? modelContext.save()
-                                    }
-                                )
-                            )
-
-                            Button("Generate New Workspace ID") {
-                                syncSettings.workspaceID = UUID().uuidString.lowercased()
-                                try? modelContext.save()
+                        Section("Beta Launch") {
+                            LabeledContent("Build") {
+                                Text(appVersionLabel)
                             }
 
-                            Button(syncInProgress ? "Syncing..." : "Sync Now") {
-                                Task {
-                                    await runSync(with: syncSettings)
-                                }
+                            LabeledContent("Records ready") {
+                                Text("\(questions.count + trials.count + healthLogs.count)")
                             }
-                            .disabled(syncInProgress || !syncSettings.isConfigured)
 
-                            if let lastSyncAt = syncSettings.lastSyncAt {
-                                Text("Last sync: \(lastSyncAt.formatted(date: .abbreviated, time: .shortened))")
+                            LabeledContent("Cloud sync") {
+                                Text(syncSettings?.isConfigured == true ? "Configured" : "Pending")
+                                    .foregroundStyle(syncSettings?.isConfigured == true ? .green : .secondary)
+                            }
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Launch path")
+                                    .font(.subheadline.weight(.medium))
+                                Text("Host data on Supabase, distribute through TestFlight, track crashes with Sentry, and watch activation/retention in PostHog.")
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
                             }
 
-                            Text(syncFeedback.isEmpty ? syncSettings.lastSyncMessage : syncFeedback)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        } header: {
-                            Text("Cloud Sync")
-                        } footer: {
-                            Text("Use the same Supabase URL, anon key, and workspace ID on both Mac and iPhone to sync one shared POC workspace.")
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Weekly loop")
+                                    .font(.subheadline.weight(.medium))
+                                Text("Review crashes, uploads, morning check-ins, and medication confirmations every week. Ship one scoped improvement per cycle.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                    }
 
-                    Section("Safety") {
-                        Text("This POC is for educational guidance, workflow trials, and self-tracking. It is not medical advice.")
-                            .font(.footnote)
-                        Text("For urgent symptoms, use emergency care immediately.")
-                            .font(.footnote)
+                        Section("Safety") {
+                            Text("This POC is for educational guidance, workflow trials, and self-tracking. It is not medical advice.")
+                                .font(.footnote)
+                            Text("For urgent symptoms, use emergency care immediately.")
+                                .font(.footnote)
+                        }
+                    } else {
+                        Text("Preparing profile...")
+                            .foregroundStyle(.secondary)
                     }
-                } else {
-                    Text("Preparing profile...")
-                        .foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Profile")
+            .navigationBarHidden(true)
             .onAppear {
                 seedDefaultsIfNeeded()
             }
@@ -187,6 +222,12 @@ struct ProfileView: View {
         }
 
         try? modelContext.save()
+    }
+
+    private var appVersionLabel: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
+        return "v\(version) (\(build))"
     }
 
     @MainActor

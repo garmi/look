@@ -40,22 +40,28 @@ struct TrialLabView: View {
     @State private var customTime: Date = TrialLabView.defaultCustomTime()
     @State private var medications: [Medication] = TrialLabView.defaultMedications
     @State private var notificationLog: [NotificationEntry] = TrialLabView.defaultNotificationLog
+    @State private var betaNotesExpanded = false
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 12) {
-                segmentedControl
+        VStack(spacing: 0) {
+            LOOKNavBar(pageTitle: "Health", showNotificationDot: false)
 
-                if activeTab == .log {
-                    dailyLogTab
-                } else {
-                    medicationTab
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 12) {
+                    segmentedControl
+
+                    if activeTab == .log {
+                        dailyLogTab
+                    } else {
+                        medicationTab
+                    }
                 }
+                .padding(.top, 16)
+                .padding(.bottom, 28)
             }
-            .padding(.top, 16)
-            .padding(.bottom, 28)
         }
         .background(parchment.ignoresSafeArea())
+        .navigationBarHidden(true)
         .sheet(isPresented: $showCalendar) {
             calendarSheet
                 .presentationDetents([.medium])
@@ -112,9 +118,49 @@ struct TrialLabView: View {
             sunriseBand
             pendingNotificationBanner
             addMedicationForm
+            betaMedicationReadinessCard
             medicationListSection
             notificationLogSection
         }
+    }
+
+    private var betaMedicationReadinessCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Beta readiness")
+                    .font(bodyFont(10))
+                    .tracking(1.5)
+                    .textCase(.uppercase)
+                    .foregroundStyle(mutedSand)
+
+                Spacer()
+
+                Button(betaNotesExpanded ? "Hide" : "Show") {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        betaNotesExpanded.toggle()
+                    }
+                }
+                .buttonStyle(.plain)
+                .font(bodyFont(11, weight: .medium))
+                .foregroundStyle(healTeal)
+            }
+
+            Text("Medication reminders are ready for TestFlight trials. Keep reminder copy stable and review acknowledgements daily.")
+                .font(bodyFont(12, weight: .medium))
+                .foregroundStyle(darkInk)
+
+            if betaNotesExpanded {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("• Verify notification permission flow on a real iPhone")
+                    Text("• Keep tacrolimus and mycophenolate as seeded defaults")
+                    Text("• Review missed acknowledgements every evening")
+                }
+                .font(bodyFont(11))
+                .foregroundStyle(mutedSand)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .modifier(LOOKCard(background: warmDawn, borderColor: sunriseOrange.opacity(0.15), cornerRadius: 16))
     }
 
     private var dailyLogHeader: some View {
