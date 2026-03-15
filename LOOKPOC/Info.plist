@@ -20,6 +20,12 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>LOOK uses your camera to photograph blood reports and prescriptions for automatic data extraction.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>LOOK may save processed documents to your photo library.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LOOK accesses your photos to upload blood reports and prescriptions.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

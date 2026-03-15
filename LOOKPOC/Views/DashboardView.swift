@@ -38,6 +38,8 @@ struct DashboardView: View {
     @State private var checkinScale: CGFloat = 1.0
     @State private var medicationConfirmedAt: Date?
     @State private var insightHintVisible: Bool = true
+    @State private var showBloodUpload = false
+    @State private var showRxUpload = false
 
     private let insights: [String] = [
         "Month 1–3 post-transplant is when most patients feel worst but are healing fastest. Trust the process.",
@@ -50,20 +52,40 @@ struct DashboardView: View {
     ]
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 12) {
-                headerSection
-                sunriseBand
-                checkinCard
-                medicationCard
-                streakBar
-                insightCard
-                statsRow
-                safetyCard
+        VStack(spacing: 0) {
+            LOOKNavBar(showNotificationDot: true)
+
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 10) {
+                    headerSection
+                    sunriseBand
+                    checkinCard
+                    medicationCard
+                    streakBar
+                    uploadSection
+                    insightCard
+                    statsRow
+                    safetyCard
+                }
+                .padding(.bottom, 24)
             }
-            .padding(.bottom, 24)
         }
         .background(parchment.ignoresSafeArea())
+        .navigationBarHidden(true)
+        .sheet(isPresented: $showBloodUpload) {
+            DocumentUploadView(
+                documentType: .bloodReport,
+                isPresented: $showBloodUpload
+            )
+            .presentationDetents([.large])
+        }
+        .sheet(isPresented: $showRxUpload) {
+            DocumentUploadView(
+                documentType: .prescription,
+                isPresented: $showRxUpload
+            )
+            .presentationDetents([.large])
+        }
         .onAppear {
             refreshDashboardMetrics()
             loadTodayState()
@@ -422,6 +444,70 @@ struct DashboardView: View {
                 insightHintVisible = false
             }
         }
+    }
+
+    private var uploadSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("UPLOAD DOCUMENTS")
+                .font(.system(size: 10, weight: .medium))
+                .tracking(1.4)
+                .foregroundColor(mutedSand)
+                .padding(.horizontal, 18)
+
+            HStack(spacing: 10) {
+                uploadTile(
+                    icon: "🩸",
+                    title: "Blood Report",
+                    sub: "PDF or photo",
+                    action: { showBloodUpload = true }
+                )
+
+                uploadTile(
+                    icon: "📄",
+                    title: "Prescription",
+                    sub: "PDF or photo",
+                    action: { showRxUpload = true }
+                )
+            }
+            .padding(.horizontal, 14)
+        }
+    }
+
+    private func uploadTile(
+        icon: String,
+        title: String,
+        sub: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Text(icon)
+                    .font(.system(size: 24))
+
+                Text(title)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(darkInk)
+
+                Text(sub)
+                    .font(.system(size: 10, weight: .light))
+                    .foregroundColor(mutedSand)
+                    .lineSpacing(2)
+
+                Text("Tap to upload")
+                    .font(.system(size: 10))
+                    .foregroundColor(healTeal.opacity(0.7))
+                    .padding(.top, 2)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(Color.white)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.black.opacity(0.06), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var statsRow: some View {
