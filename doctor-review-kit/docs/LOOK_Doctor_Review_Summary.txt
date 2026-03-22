@@ -1,0 +1,39 @@
+LOOK Doctor Review Summary
+Prepared on 22 March 2026 for initial clinician feedback
+
+LOOK is an iPhone-first transplant support app intended to help patients and caregivers organize medication routines, symptom logs, questions for appointments, uploaded reports, and trend summaries.
+
+Safety position
+- LOOK provides education, workflow support, and visit preparation only.
+- It is not a diagnostic tool or medical service.
+- Any concerning symptom or abnormal trend should still prompt direct contact with the transplant team.
+
+What this build can do
+- Morning check-in with green / amber / red states
+- Medication confirmation and streak tracking
+- Daily log for symptoms, emotional state, and doctor notes
+- Question capture for future appointments
+- Upload blood reports and prescriptions
+- Trend graphs for medications, check-ins, trial scores, labs, and question volume
+- Patient-facing and doctor-facing insight summaries
+- PDF export of a doctor-oriented summary
+
+What we want feedback on
+- Is the symptom and adherence data likely to be useful before or during appointments?
+- Which trend views are clinically useful, and which feel distracting or low-signal?
+- What would make the doctor summary safer, clearer, or more actionable?
+- What should not be shown, inferred, or emphasized in a transplant support app?
+
+Current screens included in review
+- Home dashboard with morning workflow and medication adherence
+- Insights tab with trend charts, notable-day annotations, and doctor summary
+- Ask tab for saving structured questions
+- Trials tab for daily symptom and medication logs
+- Document upload flow for reports and prescriptions
+
+Suggested review process
+1. Watch the short walkthrough video.
+2. Review the screenshots for the core flow.
+3. Open the feedback form and note what feels clinically useful, risky, or missing.
+
+LOOK is currently a prototype for workflow evaluation. Final privacy, analytics, backend document processing, and clinician-facing safeguards are still in progress.

@@ -1,0 +1,21 @@
+Subject: LOOK app prototype - quick doctor review request
+
+Hi Doctor,
+
+I’m sharing an early prototype of LOOK, a transplant support app designed to help patients organize medication routines, symptom logs, questions for appointments, uploaded reports, and simple trend summaries.
+
+This is not a diagnostic tool or medical service. The goal at this stage is to understand whether the workflow and summaries would actually be useful and safe from a clinician’s perspective.
+
+For this initial review, I’m sharing:
+1. A short walkthrough video
+2. A small set of screenshots
+3. A one-page doctor review summary
+4. A short feedback form
+
+What I would value most from you:
+- What feels clinically useful
+- What feels risky or easy to misinterpret
+- What should be removed or reframed
+- What would make this genuinely helpful before or during appointments
+
+Thank you for taking a look.
