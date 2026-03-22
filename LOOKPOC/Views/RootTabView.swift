@@ -15,6 +15,11 @@ struct RootTabView: View {
                     Label("Home", systemImage: "house")
                 }
 
+            InsightsView()
+                .tabItem {
+                    Label("Insights", systemImage: "waveform.path.ecg")
+                }
+
             AskView()
                 .tabItem {
                     Label("Ask", systemImage: "questionmark.bubble")

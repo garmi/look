@@ -15,6 +15,7 @@
 		35AAC262F7D26718CA9EF9BF /* PatternEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86897FEA0BF91015ECA34F2 /* PatternEngine.swift */; };
 		43CDC62174089FC5E51F3762 /* DirectoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80FCA352FD24F89C15426587 /* DirectoryView.swift */; };
 		440AFA44754F046CD47947D5 /* TriageEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE6EEF21ED9094D490DB0758 /* TriageEngine.swift */; };
+		45F5A1836BB74C28BB5C0446 /* InsightEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59ED47F381970579011045A7 /* InsightEngine.swift */; };
 		4CF323809CD0D65C8D1D5E66 /* DailyTrial.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB96DFC5A8BEAA96B0D1A19C /* DailyTrial.swift */; };
 		57B4025CB7A9840B6D75EEB5 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A75C904E98E16951D7DC1F45 /* DashboardView.swift */; };
 		586E9C0BA3913DE852A36B31 /* QuestionEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833A16E5478CA8FF2EA6C91 /* QuestionEntry.swift */; };
@@ -24,6 +25,8 @@
 		90463ECAFEA5ED744B027CFB /* LOOKNavBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03B38B5CB67DC7CAA673380 /* LOOKNavBar.swift */; };
 		98580ABFA24A736390B549D1 /* AskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35C3D63165B704BB0BA671B /* AskView.swift */; };
 		A1DD8F7A916E480E5ED664CF /* HealthRecordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5897B3C6DDBC499511BD5E /* HealthRecordStore.swift */; };
+		BD6E684CB5A1E85D46C21746 /* DemoPersonaLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F91A4D12DE996C11B0505A0 /* DemoPersonaLibrary.swift */; };
+		C946E081DF4E7057774C70B2 /* InsightsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF03138472DC8936739C1D2E /* InsightsView.swift */; };
 		D3D1082C16438B636157276C /* KnowledgeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */; };
 		D71A6F7022E366E03288D27E /* LOOKPOCApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE62DB12AD8AFBDCDE3BD66 /* LOOKPOCApp.swift */; };
 		E7402CC5837B178B7741A442 /* DocumentUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3A4CDE27FD6366DCD7CDE8 /* DocumentUploadView.swift */; };
@@ -37,6 +40,8 @@
 		0BB091EC192A8FE3C2EE62AD /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeRepository.swift; sourceTree = "<group>"; };
 		4EE62DB12AD8AFBDCDE3BD66 /* LOOKPOCApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LOOKPOCApp.swift; sourceTree = "<group>"; };
+		4F91A4D12DE996C11B0505A0 /* DemoPersonaLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPersonaLibrary.swift; sourceTree = "<group>"; };
+		59ED47F381970579011045A7 /* InsightEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightEngine.swift; sourceTree = "<group>"; };
 		5C2BF050237CD9B43F48DA77 /* DemoPersonaSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPersonaSeeder.swift; sourceTree = "<group>"; };
 		6C261634C1BD32C6A6795AE6 /* SupabaseSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseSyncService.swift; sourceTree = "<group>"; };
 		74C7C4FB6D725883A5FC9D74 /* LOOKPOC.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LOOKPOC.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -46,6 +51,7 @@
 		BB96DFC5A8BEAA96B0D1A19C /* DailyTrial.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyTrial.swift; sourceTree = "<group>"; };
 		BBB4F934CB354262CA314878 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		BEEC6444FA5B24831438218C /* DailyHealthLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyHealthLog.swift; sourceTree = "<group>"; };
+		BF03138472DC8936739C1D2E /* InsightsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsightsView.swift; sourceTree = "<group>"; };
 		C35C3D63165B704BB0BA671B /* AskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskView.swift; sourceTree = "<group>"; };
 		C833A16E5478CA8FF2EA6C91 /* QuestionEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionEntry.swift; sourceTree = "<group>"; };
 		C86897FEA0BF91015ECA34F2 /* PatternEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternEngine.swift; sourceTree = "<group>"; };
@@ -98,6 +104,7 @@
 				C35C3D63165B704BB0BA671B /* AskView.swift */,
 				A75C904E98E16951D7DC1F45 /* DashboardView.swift */,
 				80FCA352FD24F89C15426587 /* DirectoryView.swift */,
+				BF03138472DC8936739C1D2E /* InsightsView.swift */,
 				D6ABE3D2B251893C214FFE96 /* ProfileView.swift */,
 				BBB4F934CB354262CA314878 /* RootTabView.swift */,
 				070BEC0F3DEF8CB4FC7F35F1 /* TrialLabView.swift */,
@@ -116,8 +123,10 @@
 		998779C418A91D58DAB73188 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				4F91A4D12DE996C11B0505A0 /* DemoPersonaLibrary.swift */,
 				5C2BF050237CD9B43F48DA77 /* DemoPersonaSeeder.swift */,
 				ED5897B3C6DDBC499511BD5E /* HealthRecordStore.swift */,
+				59ED47F381970579011045A7 /* InsightEngine.swift */,
 				26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */,
 				C86897FEA0BF91015ECA34F2 /* PatternEngine.swift */,
 				6C261634C1BD32C6A6795AE6 /* SupabaseSyncService.swift */,
@@ -193,10 +202,13 @@
 				8F3F5473057BB3B02298698F /* DailyHealthLog.swift in Sources */,
 				4CF323809CD0D65C8D1D5E66 /* DailyTrial.swift in Sources */,
 				57B4025CB7A9840B6D75EEB5 /* DashboardView.swift in Sources */,
+				BD6E684CB5A1E85D46C21746 /* DemoPersonaLibrary.swift in Sources */,
 				0AD9D35F436EC547D22CFD15 /* DemoPersonaSeeder.swift in Sources */,
 				43CDC62174089FC5E51F3762 /* DirectoryView.swift in Sources */,
 				E7402CC5837B178B7741A442 /* DocumentUploadView.swift in Sources */,
 				A1DD8F7A916E480E5ED664CF /* HealthRecordStore.swift in Sources */,
+				45F5A1836BB74C28BB5C0446 /* InsightEngine.swift in Sources */,
+				C946E081DF4E7057774C70B2 /* InsightsView.swift in Sources */,
 				D3D1082C16438B636157276C /* KnowledgeRepository.swift in Sources */,
 				8CFA85F8AD58CF0C4B37A415 /* LOOKEyeMark.swift in Sources */,
 				90463ECAFEA5ED744B027CFB /* LOOKNavBar.swift in Sources */,
