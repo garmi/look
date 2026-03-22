@@ -7,20 +7,33 @@ struct InsightPoint: Identifiable {
     let value: Double
 }
 
+struct InsightAnnotation: Identifiable {
+    let id = UUID()
+    let date: Date
+    let label: String
+    let detail: String
+    let value: Double
+}
+
 struct InsightMetricSeries: Identifiable {
     let id = UUID()
     let title: String
     let subtitle: String
     let status: String
     let points: [InsightPoint]
+    let annotations: [InsightAnnotation]
 }
 
 struct InsightSnapshot {
     let rangeDays: Int
     let medicationSeries: [InsightPoint]
+    let medicationAnnotations: [InsightAnnotation]
     let checkinSeries: [InsightPoint]
+    let checkinAnnotations: [InsightAnnotation]
     let trialSeries: [InsightPoint]
+    let trialAnnotations: [InsightAnnotation]
     let questionSeries: [InsightPoint]
+    let questionAnnotations: [InsightAnnotation]
     let labSeries: [InsightMetricSeries]
     let patientHeadline: String
     let patientBody: String
@@ -31,9 +44,13 @@ struct InsightSnapshot {
     static let empty = InsightSnapshot(
         rangeDays: 7,
         medicationSeries: [],
+        medicationAnnotations: [],
         checkinSeries: [],
+        checkinAnnotations: [],
         trialSeries: [],
+        trialAnnotations: [],
         questionSeries: [],
+        questionAnnotations: [],
         labSeries: [],
         patientHeadline: "Insights appear after a few days of real use.",
         patientBody: "Confirm medication, complete a daily check-in, and upload one report to unlock a clearer pattern story.",
@@ -90,6 +107,15 @@ enum InsightEngine {
             let value = logsByDay[date]?.medicationConfirmedAt != nil ? 1.0 : 0.0
             return InsightPoint(date: date, label: axisLabel(for: date, range: range), value: value)
         }
+        let medicationAnnotations = dates.compactMap { date -> InsightAnnotation? in
+            guard let log = logsByDay[date], log.medicationConfirmedAt == nil else { return nil }
+            return InsightAnnotation(
+                date: date,
+                label: "Missed",
+                detail: "Medication was not confirmed on this day.",
+                value: 0
+            )
+        }
 
         let checkinSeries = dates.map { date in
             let value: Double
@@ -105,6 +131,27 @@ enum InsightEngine {
             }
             return InsightPoint(date: date, label: axisLabel(for: date, range: range), value: value)
         }
+        let checkinAnnotations = dates.compactMap { date -> InsightAnnotation? in
+            guard let status = logsByDay[date]?.checkinStatus else { return nil }
+            switch status {
+            case .help:
+                return InsightAnnotation(
+                    date: date,
+                    label: "Help",
+                    detail: "A help-level morning check-in was logged here.",
+                    value: 1
+                )
+            case .unsure:
+                return InsightAnnotation(
+                    date: date,
+                    label: "Unsure",
+                    detail: "This day carried an amber check-in signal.",
+                    value: 2
+                )
+            case .allGood:
+                return nil
+            }
+        }
 
         let trialSeries = dates.map { date in
             let dayTrials = groupedTrials[date] ?? []
@@ -116,10 +163,36 @@ enum InsightEngine {
             }
             return InsightPoint(date: date, label: axisLabel(for: date, range: range), value: value)
         }
+        let trialAnnotations = dates.compactMap { date -> InsightAnnotation? in
+            let dayTrials = groupedTrials[date] ?? []
+            guard !dayTrials.isEmpty else { return nil }
+
+            if dayTrials.contains(where: { $0.triageLevel == "red" }) {
+                let average = dayTrials.map(\.rating).reduce(0, +) / Double(dayTrials.count)
+                return InsightAnnotation(
+                    date: date,
+                    label: "Red",
+                    detail: "A red triage daily log was captured on this day.",
+                    value: average
+                )
+            }
+
+            return nil
+        }
 
         let questionSeries = dates.map { date in
             let count = groupedQuestions[date]?.count ?? 0
             return InsightPoint(date: date, label: axisLabel(for: date, range: range), value: Double(count))
+        }
+        let questionAnnotations = dates.compactMap { date -> InsightAnnotation? in
+            let count = groupedQuestions[date]?.count ?? 0
+            guard count >= 2 else { return nil }
+            return InsightAnnotation(
+                date: date,
+                label: "Spike",
+                detail: "\(count) questions were saved on this day.",
+                value: Double(count)
+            )
         }
 
         let filteredLabSeries = buildLabSeries(records: records, start: start)
@@ -143,9 +216,13 @@ enum InsightEngine {
         return InsightSnapshot(
             rangeDays: range.rawValue,
             medicationSeries: medicationSeries,
+            medicationAnnotations: medicationAnnotations,
             checkinSeries: checkinSeries,
+            checkinAnnotations: checkinAnnotations,
             trialSeries: trialSeries,
+            trialAnnotations: trialAnnotations,
             questionSeries: questionSeries,
+            questionAnnotations: questionAnnotations,
             labSeries: filteredLabSeries,
             patientHeadline: careInsight.patientHeadline,
             patientBody: careInsight.patientBody,
@@ -200,7 +277,25 @@ enum InsightEngine {
                 title: metric.replacingOccurrences(of: " trough", with: ""),
                 subtitle: unit.isEmpty ? deltaWord : "\(unit) · \(deltaWord)",
                 status: status,
-                points: points
+                points: points,
+                annotations: buildLabAnnotations(metric: metric, records: source)
+            )
+        }
+    }
+
+    private static func buildLabAnnotations(metric: String, records: [StoredHealthRecord]) -> [InsightAnnotation] {
+        records.compactMap { record in
+            guard let value = record.values.first(where: { normalize($0.name) == normalize(metric) }),
+                  value.status != "normal",
+                  let numeric = numericValue(from: value.value) else {
+                return nil
+            }
+
+            return InsightAnnotation(
+                date: record.capturedAt,
+                label: value.status.capitalized,
+                detail: "\(metric) was marked \(value.status) in the uploaded report.",
+                value: numeric
             )
         }
     }

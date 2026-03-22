@@ -172,6 +172,7 @@ struct InsightsView: View {
                 subtitle: "1 = confirmed, 0 = missed or not logged",
                 accentColor: insightsSageGreen,
                 points: insightSnapshot.medicationSeries,
+                annotations: insightSnapshot.medicationAnnotations,
                 domain: 0...1,
                 action: {
                     selectedDrilldown = InsightDrilldown(
@@ -179,6 +180,7 @@ struct InsightsView: View {
                         subtitle: "Daily confirmations over the selected window.",
                         accentColor: insightsSageGreen,
                         points: insightSnapshot.medicationSeries,
+                        annotations: insightSnapshot.medicationAnnotations,
                         domain: 0...1,
                         detailLines: [
                             "A value of 1 means medication was confirmed on that day.",
@@ -193,6 +195,7 @@ struct InsightsView: View {
                 subtitle: "3 = all good, 2 = unsure, 1 = help",
                 accentColor: insightsSunriseOrange,
                 points: insightSnapshot.checkinSeries,
+                annotations: insightSnapshot.checkinAnnotations,
                 domain: 0...3,
                 action: {
                     selectedDrilldown = InsightDrilldown(
@@ -200,6 +203,7 @@ struct InsightsView: View {
                         subtitle: "Mood and symptom confidence across the selected window.",
                         accentColor: insightsSunriseOrange,
                         points: insightSnapshot.checkinSeries,
+                        annotations: insightSnapshot.checkinAnnotations,
                         domain: 0...3,
                         detailLines: [
                             "3 means all good, 2 means unsure, and 1 means help.",
@@ -214,6 +218,7 @@ struct InsightsView: View {
                 subtitle: "Average rating from the daily log",
                 accentColor: insightsHealTeal,
                 points: insightSnapshot.trialSeries,
+                annotations: insightSnapshot.trialAnnotations,
                 domain: 0...5,
                 action: {
                     selectedDrilldown = InsightDrilldown(
@@ -221,6 +226,7 @@ struct InsightsView: View {
                         subtitle: "Combined score from symptoms, meds, and emotional state.",
                         accentColor: insightsHealTeal,
                         points: insightSnapshot.trialSeries,
+                        annotations: insightSnapshot.trialAnnotations,
                         domain: 0...5,
                         detailLines: [
                             "This is a composite score from the Trials tab, not a clinical measurement.",
@@ -235,6 +241,7 @@ struct InsightsView: View {
                 subtitle: "Questions saved in Ask during this period",
                 accentColor: insightsDarkInk,
                 points: insightSnapshot.questionSeries,
+                annotations: insightSnapshot.questionAnnotations,
                 domain: 0...max(questionDomainUpperBound, 1),
                 action: {
                     selectedDrilldown = InsightDrilldown(
@@ -242,6 +249,7 @@ struct InsightsView: View {
                         subtitle: "How often LOOK is helping convert uncertainty into useful prompts.",
                         accentColor: insightsDarkInk,
                         points: insightSnapshot.questionSeries,
+                        annotations: insightSnapshot.questionAnnotations,
                         domain: 0...max(questionDomainUpperBound, 1),
                         detailLines: [
                             "A higher question count is not necessarily bad.",
@@ -305,6 +313,7 @@ struct InsightsView: View {
                             subtitle: "",
                             accentColor: color(for: series.status),
                             points: series.points,
+                            annotations: series.annotations,
                             domain: labDomain(for: series.points),
                             hidesHeader: true,
                             action: {
@@ -313,6 +322,7 @@ struct InsightsView: View {
                                     subtitle: series.subtitle,
                                     accentColor: color(for: series.status),
                                     points: series.points,
+                                    annotations: series.annotations,
                                     domain: labDomain(for: series.points),
                                     detailLines: [
                                         "This chart is built from uploaded blood reports.",
@@ -363,6 +373,7 @@ struct InsightsView: View {
                             subtitle: "A clinician-facing synthesis from current LOOK data.",
                             accentColor: insightsSunriseOrange,
                             points: insightSnapshot.trialSeries,
+                            annotations: insightSnapshot.trialAnnotations,
                             domain: 0...5,
                             detailLines: doctorExportLines()
                         )
@@ -637,6 +648,7 @@ private struct TrendChartCard: View {
     let subtitle: String
     let accentColor: Color
     let points: [InsightPoint]
+    let annotations: [InsightAnnotation]
     let domain: ClosedRange<Double>
     var hidesHeader: Bool = false
     var action: (() -> Void)? = nil
@@ -681,6 +693,36 @@ private struct TrendChartCard: View {
                     )
                     .foregroundStyle(accentColor)
                     .symbolSize(26)
+
+                    ForEach(annotations) { annotation in
+                        PointMark(
+                            x: .value("Event Date", annotation.date),
+                            y: .value("Event Value", annotation.value)
+                        )
+                        .foregroundStyle(annotationColor(for: annotation))
+                        .symbol {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.white)
+                                    .frame(width: 18, height: 18)
+                                Circle()
+                                    .stroke(annotationColor(for: annotation), lineWidth: 2)
+                                    .frame(width: 18, height: 18)
+                                Text(shortBadge(for: annotation))
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(annotationColor(for: annotation))
+                            }
+                        }
+                        .annotation(position: .top, spacing: 6) {
+                            Text(annotation.label)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(annotationColor(for: annotation))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 3)
+                                .background(Color.white.opacity(0.96))
+                                .clipShape(Capsule())
+                        }
+                    }
                 }
                 .chartYScale(domain: domain)
                 .chartXAxis {
@@ -724,6 +766,40 @@ private struct TrendChartCard: View {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMM"
         return formatter.string(from: date)
+    }
+
+    private func annotationColor(for annotation: InsightAnnotation) -> Color {
+        switch annotation.label.lowercased() {
+        case "missed", "red", "high", "critical", "help":
+            return Color(red: 0.86, green: 0.26, blue: 0.24)
+        case "unsure", "spike", "low":
+            return insightsSunriseOrange
+        default:
+            return accentColor
+        }
+    }
+
+    private func shortBadge(for annotation: InsightAnnotation) -> String {
+        switch annotation.label.lowercased() {
+        case "missed":
+            return "!"
+        case "red":
+            return "R"
+        case "help":
+            return "H"
+        case "unsure":
+            return "?"
+        case "spike":
+            return "+"
+        case "high":
+            return "H"
+        case "low":
+            return "L"
+        case "critical":
+            return "!"
+        default:
+            return "•"
+        }
     }
 }
 
@@ -886,6 +962,7 @@ private struct InsightDrilldown: Identifiable {
     let subtitle: String
     let accentColor: Color
     let points: [InsightPoint]
+    let annotations: [InsightAnnotation]
     let domain: ClosedRange<Double>
     let detailLines: [String]
 }
@@ -917,6 +994,7 @@ private struct InsightDrilldownView: View {
                         subtitle: "",
                         accentColor: drilldown.accentColor,
                         points: drilldown.points,
+                        annotations: drilldown.annotations,
                         domain: drilldown.domain,
                         hidesHeader: true
                     )
