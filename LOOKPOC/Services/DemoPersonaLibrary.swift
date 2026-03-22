@@ -1,7 +1,15 @@
 import Foundation
 
+enum DemoPersonaPreset: String, CaseIterable, Identifiable {
+    case aarav
+    case meera
+    case imran
+
+    var id: String { rawValue }
+}
+
 struct DemoPersonaJourney: Identifiable {
-    let id = UUID()
+    let preset: DemoPersonaPreset
     let name: String
     let ageLabel: String
     let stage: PatientStage
@@ -17,6 +25,8 @@ struct DemoPersonaJourney: Identifiable {
     let questionTrend: [Double]
     let labMetrics: [DemoPersonaLabMetric]
     let keyQuestions: [String]
+
+    var id: String { preset.rawValue }
 }
 
 struct DemoPersonaLabMetric: Identifiable {
@@ -30,6 +40,7 @@ struct DemoPersonaLabMetric: Identifiable {
 enum DemoPersonaLibrary {
     static let journeys: [DemoPersonaJourney] = [
         DemoPersonaJourney(
+            preset: .aarav,
             name: "Aarav Shah",
             ageLabel: "31 yrs",
             stage: .postTransplant,
@@ -54,6 +65,7 @@ enum DemoPersonaLibrary {
             ]
         ),
         DemoPersonaJourney(
+            preset: .meera,
             name: "Meera Reddy",
             ageLabel: "42 yrs",
             stage: .dialysis,
@@ -78,6 +90,7 @@ enum DemoPersonaLibrary {
             ]
         ),
         DemoPersonaJourney(
+            preset: .imran,
             name: "Imran Khan",
             ageLabel: "27 yrs",
             stage: .awaitingTransplant,
@@ -102,4 +115,8 @@ enum DemoPersonaLibrary {
             ]
         )
     ]
+
+    static func journey(for preset: DemoPersonaPreset) -> DemoPersonaJourney {
+        journeys.first(where: { $0.preset == preset }) ?? journeys[0]
+    }
 }

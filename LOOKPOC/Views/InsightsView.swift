@@ -21,6 +21,8 @@ struct InsightsView: View {
     @State private var insightSnapshot: InsightSnapshot = .empty
     @State private var selectedLabMetric: String = "Creatinine"
     @State private var selectedPersonaID: DemoPersonaJourney.ID?
+    @State private var selectedDrilldown: InsightDrilldown?
+    @State private var sharePayload: SharePayload?
 
     private let personaJourneys = DemoPersonaLibrary.journeys
 
@@ -43,6 +45,13 @@ struct InsightsView: View {
         }
         .background(insightsParchment.ignoresSafeArea())
         .navigationBarHidden(true)
+        .sheet(item: $selectedDrilldown) { drilldown in
+            InsightDrilldownView(drilldown: drilldown)
+                .presentationDetents([.large])
+        }
+        .sheet(item: $sharePayload) { payload in
+            ActivityView(activityItems: [payload.url])
+        }
         .onAppear {
             refreshInsights()
             if selectedPersonaID == nil {
@@ -163,7 +172,20 @@ struct InsightsView: View {
                 subtitle: "1 = confirmed, 0 = missed or not logged",
                 accentColor: insightsSageGreen,
                 points: insightSnapshot.medicationSeries,
-                domain: 0...1
+                domain: 0...1,
+                action: {
+                    selectedDrilldown = InsightDrilldown(
+                        title: "Medication adherence",
+                        subtitle: "Daily confirmations over the selected window.",
+                        accentColor: insightsSageGreen,
+                        points: insightSnapshot.medicationSeries,
+                        domain: 0...1,
+                        detailLines: [
+                            "A value of 1 means medication was confirmed on that day.",
+                            "Missed confirmations are often where patient support should begin."
+                        ]
+                    )
+                }
             )
 
             TrendChartCard(
@@ -171,7 +193,20 @@ struct InsightsView: View {
                 subtitle: "3 = all good, 2 = unsure, 1 = help",
                 accentColor: insightsSunriseOrange,
                 points: insightSnapshot.checkinSeries,
-                domain: 0...3
+                domain: 0...3,
+                action: {
+                    selectedDrilldown = InsightDrilldown(
+                        title: "Check-in stability",
+                        subtitle: "Mood and symptom confidence across the selected window.",
+                        accentColor: insightsSunriseOrange,
+                        points: insightSnapshot.checkinSeries,
+                        domain: 0...3,
+                        detailLines: [
+                            "3 means all good, 2 means unsure, and 1 means help.",
+                            "Repeated amber or red days usually deserve a tighter follow-up loop."
+                        ]
+                    )
+                }
             )
 
             TrendChartCard(
@@ -179,7 +214,20 @@ struct InsightsView: View {
                 subtitle: "Average rating from the daily log",
                 accentColor: insightsHealTeal,
                 points: insightSnapshot.trialSeries,
-                domain: 0...5
+                domain: 0...5,
+                action: {
+                    selectedDrilldown = InsightDrilldown(
+                        title: "Daily trial score",
+                        subtitle: "Combined score from symptoms, meds, and emotional state.",
+                        accentColor: insightsHealTeal,
+                        points: insightSnapshot.trialSeries,
+                        domain: 0...5,
+                        detailLines: [
+                            "This is a composite score from the Trials tab, not a clinical measurement.",
+                            "Lower scores are useful context for both patient reflection and doctor prep."
+                        ]
+                    )
+                }
             )
 
             TrendChartCard(
@@ -187,7 +235,20 @@ struct InsightsView: View {
                 subtitle: "Questions saved in Ask during this period",
                 accentColor: insightsDarkInk,
                 points: insightSnapshot.questionSeries,
-                domain: 0...max(questionDomainUpperBound, 1)
+                domain: 0...max(questionDomainUpperBound, 1),
+                action: {
+                    selectedDrilldown = InsightDrilldown(
+                        title: "Questions captured",
+                        subtitle: "How often LOOK is helping convert uncertainty into useful prompts.",
+                        accentColor: insightsDarkInk,
+                        points: insightSnapshot.questionSeries,
+                        domain: 0...max(questionDomainUpperBound, 1),
+                        detailLines: [
+                            "A higher question count is not necessarily bad.",
+                            "Often it means the patient is preparing better for the next appointment."
+                        ]
+                    )
+                }
             )
         }
     }
@@ -245,7 +306,20 @@ struct InsightsView: View {
                             accentColor: color(for: series.status),
                             points: series.points,
                             domain: labDomain(for: series.points),
-                            hidesHeader: true
+                            hidesHeader: true,
+                            action: {
+                                selectedDrilldown = InsightDrilldown(
+                                    title: series.title,
+                                    subtitle: series.subtitle,
+                                    accentColor: color(for: series.status),
+                                    points: series.points,
+                                    domain: labDomain(for: series.points),
+                                    detailLines: [
+                                        "This chart is built from uploaded blood reports.",
+                                        "LOOK is helping the patient learn their own baseline, not replacing clinical interpretation."
+                                    ]
+                                )
+                            }
                         )
                     }
                     .modifier(InsightCard(background: Color.white, borderColor: color(for: series.status).opacity(0.18)))
@@ -267,6 +341,37 @@ struct InsightsView: View {
                     .font(bodyFont(12))
                     .foregroundStyle(insightsMutedSand)
                     .lineSpacing(4)
+
+                HStack(spacing: 10) {
+                    Button {
+                        if let url = buildDoctorPDF() {
+                            sharePayload = SharePayload(url: url)
+                        }
+                    } label: {
+                        Text("Export PDF")
+                            .font(bodyFont(11, weight: .medium))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(insightsDarkInk)
+                            .clipShape(Capsule())
+                    }
+
+                    Button {
+                        selectedDrilldown = InsightDrilldown(
+                            title: "Doctor summary",
+                            subtitle: "A clinician-facing synthesis from current LOOK data.",
+                            accentColor: insightsSunriseOrange,
+                            points: insightSnapshot.trialSeries,
+                            domain: 0...5,
+                            detailLines: doctorExportLines()
+                        )
+                    } label: {
+                        Text("Open full summary")
+                            .font(bodyFont(11, weight: .medium))
+                            .foregroundStyle(insightsSunriseOrange)
+                    }
+                }
             }
             .modifier(InsightCard(background: insightsWarmDawn, borderColor: insightsSunriseOrange.opacity(0.14)))
         }
@@ -434,6 +539,97 @@ struct InsightsView: View {
     private func formattedValue(_ value: Double) -> String {
         String(format: value.rounded() == value ? "%.0f" : "%.2f", value)
     }
+
+    private func doctorExportLines() -> [String] {
+        var lines: [String] = []
+        let patientName = profiles.first?.name.isEmpty == false ? profiles.first?.name ?? "Patient" : "Patient"
+        lines.append("Patient: \(patientName)")
+        lines.append("Range: \(selectedRange.rawValue) days")
+        lines.append(insightSnapshot.doctorBody)
+
+        if !insightSnapshot.highlights.isEmpty {
+            lines.append("Highlights:")
+            lines.append(contentsOf: insightSnapshot.highlights.map { "• \($0)" })
+        }
+
+        if let lab = selectedLabSeries {
+            lines.append("Lab focus: \(lab.title) — \(lab.subtitle)")
+        }
+
+        return lines
+    }
+
+    private func buildDoctorPDF() -> URL? {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("LOOK-Doctor-Summary.pdf")
+        let bounds = CGRect(x: 0, y: 0, width: 612, height: 792)
+        let renderer = UIGraphicsPDFRenderer(bounds: bounds)
+        let textColor = UIColor(red: 0.11, green: 0.11, blue: 0.18, alpha: 1)
+        let mutedColor = UIColor(red: 0.48, green: 0.43, blue: 0.40, alpha: 1)
+
+        do {
+            try renderer.writePDF(to: url) { context in
+                context.beginPage()
+                var y: CGFloat = 36
+
+                let titleAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont(name: "DM Serif Display", size: 24) ?? UIFont(name: "Georgia", size: 24) ?? UIFont.systemFont(ofSize: 24, weight: .semibold),
+                    .foregroundColor: textColor
+                ]
+                let bodyAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont(name: "DM Sans", size: 12) ?? UIFont.systemFont(ofSize: 12, weight: .regular),
+                    .foregroundColor: mutedColor
+                ]
+                let strongAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont(name: "DM Sans", size: 12) ?? UIFont.systemFont(ofSize: 12, weight: .semibold),
+                    .foregroundColor: textColor
+                ]
+
+                NSString(string: "LOOK Doctor Insight Summary").draw(at: CGPoint(x: 36, y: y), withAttributes: titleAttrs)
+                y += 42
+
+                let patientName = profiles.first?.name.isEmpty == false ? profiles.first?.name ?? "Patient" : "Patient"
+                NSString(string: "Patient: \(patientName)").draw(at: CGPoint(x: 36, y: y), withAttributes: strongAttrs)
+                y += 20
+                NSString(string: "Range: \(selectedRange.rawValue) days").draw(at: CGPoint(x: 36, y: y), withAttributes: bodyAttrs)
+                y += 28
+
+                y = drawWrapped(text: insightSnapshot.doctorHeadline, y: y, width: bounds.width - 72, attributes: strongAttrs) + 10
+                y = drawWrapped(text: insightSnapshot.doctorBody, y: y, width: bounds.width - 72, attributes: bodyAttrs) + 16
+
+                for line in doctorExportLines() {
+                    y = drawWrapped(text: line, y: y, width: bounds.width - 72, attributes: bodyAttrs) + 8
+                }
+
+                y += 12
+                let footer = "LOOK supports education and workflow preparation only. Always confirm clinical decisions with your transplant team."
+                _ = drawWrapped(text: footer, y: y, width: bounds.width - 72, attributes: bodyAttrs)
+            }
+            return url
+        } catch {
+            return nil
+        }
+    }
+
+    private func drawWrapped(
+        text: String,
+        y: CGFloat,
+        width: CGFloat,
+        attributes: [NSAttributedString.Key: Any]
+    ) -> CGFloat {
+        let rect = NSString(string: text).boundingRect(
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attributes,
+            context: nil
+        )
+        NSString(string: text).draw(
+            with: CGRect(x: 36, y: y, width: width, height: rect.height + 4),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attributes,
+            context: nil
+        )
+        return y + rect.height
+    }
 }
 
 private struct TrendChartCard: View {
@@ -443,6 +639,7 @@ private struct TrendChartCard: View {
     let points: [InsightPoint]
     let domain: ClosedRange<Double>
     var hidesHeader: Bool = false
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -510,6 +707,10 @@ private struct TrendChartCard: View {
             }
         }
         .modifier(InsightCard(background: Color.white, borderColor: Color.black.opacity(0.06)))
+        .contentShape(RoundedRectangle(cornerRadius: 20))
+        .onTapGesture {
+            action?()
+        }
     }
 
     private func fontBody(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
@@ -677,4 +878,95 @@ private struct InsightCard: ViewModifier {
             )
             .padding(.horizontal, 16)
     }
+}
+
+private struct InsightDrilldown: Identifiable {
+    let id = UUID()
+    let title: String
+    let subtitle: String
+    let accentColor: Color
+    let points: [InsightPoint]
+    let domain: ClosedRange<Double>
+    let detailLines: [String]
+}
+
+private struct InsightDrilldownView: View {
+    let drilldown: InsightDrilldown
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 3)
+                .fill(Color.gray.opacity(0.25))
+                .frame(width: 42, height: 5)
+                .padding(.top, 10)
+                .padding(.bottom, 16)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(drilldown.title)
+                        .font(fontDisplay(26))
+                        .foregroundStyle(insightsDarkInk)
+
+                    Text(drilldown.subtitle)
+                        .font(fontBody(12))
+                        .foregroundStyle(insightsMutedSand)
+                        .lineSpacing(4)
+
+                    TrendChartCard(
+                        title: "",
+                        subtitle: "",
+                        accentColor: drilldown.accentColor,
+                        points: drilldown.points,
+                        domain: drilldown.domain,
+                        hidesHeader: true
+                    )
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("What this means")
+                            .font(fontBody(11, weight: .medium))
+                            .foregroundStyle(insightsDarkInk)
+
+                        ForEach(drilldown.detailLines, id: \.self) { line in
+                            Text("• \(line)")
+                                .font(fontBody(11))
+                                .foregroundStyle(insightsMutedSand)
+                                .lineSpacing(3)
+                        }
+                    }
+                    .modifier(InsightCard(background: insightsWarmDawn, borderColor: drilldown.accentColor.opacity(0.16)))
+                }
+                .padding(.bottom, 24)
+            }
+        }
+        .background(insightsParchment.ignoresSafeArea())
+    }
+
+    private func fontDisplay(_ size: CGFloat) -> Font {
+        if UIFont(name: "DM Serif Display", size: size) != nil {
+            return .custom("DM Serif Display", size: size)
+        }
+        return .custom("Georgia", size: size)
+    }
+
+    private func fontBody(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
+        if UIFont(name: "DM Sans", size: size) != nil {
+            return .custom("DM Sans", size: size)
+        }
+        return .system(size: size, weight: weight, design: .default)
+    }
+}
+
+private struct SharePayload: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
