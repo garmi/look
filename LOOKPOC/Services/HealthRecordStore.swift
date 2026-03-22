@@ -31,6 +31,7 @@ struct HealthMetricTrend: Identifiable {
     var baselineText: String
     var trendLine: String
     var status: String
+    var series: [Double]
 }
 
 struct HealthRecordSnapshot {
@@ -78,6 +79,29 @@ struct StageRoadmapSnapshot {
     let actions: [String]
 }
 
+struct CareInsightSnapshot {
+    let patientHeadline: String
+    let patientBody: String
+    let doctorHeadline: String
+    let doctorBody: String
+
+    static let empty = CareInsightSnapshot(
+        patientHeadline: "Your insights will sharpen after a few days of real use.",
+        patientBody: "Start with one medication confirmation, one daily log, and one uploaded report.",
+        doctorHeadline: "Clinician synthesis appears after trend data is available.",
+        doctorBody: "LOOK will summarise adherence, symptoms, labs, and key questions once records accumulate."
+    )
+}
+
+struct WeeklyTrendSnapshot {
+    let labels: [String]
+    let medicationValues: [Double]
+    let trialScores: [Double]
+    let checkinScores: [Double]
+
+    static let empty = WeeklyTrendSnapshot(labels: [], medicationValues: [], trialScores: [], checkinScores: [])
+}
+
 enum HealthRecordStore {
     static let recordsKey = "lookHealthRecords.v2"
     private static let legacyRecordsKey = "lookHealthRecords"
@@ -99,6 +123,10 @@ enum HealthRecordStore {
         var records = loadRecords(defaults: defaults)
         records.insert(record, at: 0)
         saveRecords(records, defaults: defaults)
+    }
+
+    static func replaceAll(_ records: [StoredHealthRecord], defaults: UserDefaults = .standard) {
+        saveRecords(records.sorted { $0.capturedAt > $1.capturedAt }, defaults: defaults)
     }
 
     static func makeRecord(
@@ -303,6 +331,121 @@ enum HealthRecordStore {
         }
     }
 
+    static func buildInsights(
+        profile: UserProfile?,
+        pattern: PatternSnapshot,
+        records: [StoredHealthRecord],
+        questions: [QuestionEntry],
+        trials: [DailyTrial]
+    ) -> CareInsightSnapshot {
+        let creatinineTrend = extractTrend(metric: focusMetrics[0], from: records)
+        let tacrolimusTrend = extractTrend(metric: focusMetrics[2], from: records)
+        let latestBloodReport = records.first(where: { $0.type == .bloodReport })
+        let recentQuestion = questions.first?.question ?? "No recent question saved."
+        let recentNote = trials.first?.friction ?? "No recent trial note."
+
+        let patientHeadline: String
+        let patientBody: String
+
+        if let creatinineTrend, creatinineTrend.series.count >= 2, creatinineTrend.status != "normal" {
+            patientHeadline = "Your kidney markers need a calmer, closer look."
+            patientBody = "Creatinine is drifting away from your recent baseline. Do not panic, but bring this trend, your tacrolimus timing, and any symptom change to your transplant team."
+        } else if pattern.riskTier == .red {
+            patientHeadline = "Your recent pattern deserves same-day attention."
+            patientBody = "LOOK is seeing a higher-risk mix of missed routine steps or support flags. Contact your transplant coordinator and carry your visit pack with you."
+        } else if pattern.riskTier == .amber {
+            patientHeadline = "You are still stable, but your routine is wobbling."
+            patientBody = "A few days of uncertainty or missed adherence are visible. Tighten medication timing and prepare one concise question for your doctor."
+        } else {
+            patientHeadline = "Your trend looks mostly steady."
+            patientBody = "Medication consistency and daily logs are giving you a usable baseline. Keep protecting routine, and keep logging small changes before they become stressful."
+        }
+
+        let doctorHeadline = "Clinician brief"
+        let doctorBody: String
+        var doctorParts: [String] = []
+        if let creatinineTrend {
+            doctorParts.append("Creatinine \(creatinineTrend.trendLine)")
+        }
+        if let tacrolimusTrend {
+            doctorParts.append("Tacrolimus \(tacrolimusTrend.trendLine)")
+        }
+        if let latestBloodReport, !latestBloodReport.flaggedValues.isEmpty {
+            doctorParts.append("Flagged labs: \(latestBloodReport.flaggedValues.joined(separator: ", "))")
+        }
+        doctorParts.append("Pattern: \(pattern.summary)")
+        doctorParts.append("Recent question: \(recentQuestion)")
+        if !recentNote.isEmpty, recentNote != "No doctor note" {
+            doctorParts.append("Recent note: \(recentNote)")
+        }
+
+        doctorBody = doctorParts.joined(separator: ". ") + "."
+
+        return CareInsightSnapshot(
+            patientHeadline: patientHeadline,
+            patientBody: patientBody,
+            doctorHeadline: doctorHeadline,
+            doctorBody: doctorBody
+        )
+    }
+
+    static func buildWeeklyTrendSnapshot(
+        healthLogs: [DailyHealthLog],
+        trials: [DailyTrial],
+        now: Date = .now
+    ) -> WeeklyTrendSnapshot {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: now)
+        let days = (0..<7).compactMap { offset in
+            calendar.date(byAdding: .day, value: -(6 - offset), to: today)
+        }
+
+        let labels = days.map { date in
+            let formatter = DateFormatter()
+            formatter.dateFormat = "E"
+            return formatter.string(from: date)
+        }
+
+        let dayFormatter = DateFormatter()
+        dayFormatter.calendar = calendar
+        dayFormatter.dateFormat = "yyyy-MM-dd"
+
+        let medicationValues = days.map { date -> Double in
+            let key = dayFormatter.string(from: date)
+            let log = healthLogs.first(where: { $0.dayKey == key })
+            return log?.medicationConfirmedAt != nil ? 1.0 : 0.0
+        }
+
+        let checkinScores = days.map { date -> Double in
+            let key = dayFormatter.string(from: date)
+            guard let status = healthLogs.first(where: { $0.dayKey == key })?.checkinStatus else {
+                return 0.0
+            }
+            switch status {
+            case .allGood:
+                return 3.0
+            case .unsure:
+                return 2.0
+            case .help:
+                return 1.0
+            }
+        }
+
+        let trialScores = days.map { date -> Double in
+            guard let trial = trials.first(where: { calendar.isDate($0.createdAt, inSameDayAs: date) }) else {
+                return 0.0
+            }
+            return Double(trial.rating)
+        }
+
+        return WeeklyTrendSnapshot(
+            labels: labels,
+            medicationValues: medicationValues,
+            trialScores: trialScores,
+            checkinScores: checkinScores
+        )
+    }
+
     private static func saveRecords(_ records: [StoredHealthRecord], defaults: UserDefaults) {
         guard let data = try? JSONEncoder().encode(records) else { return }
         defaults.set(data, forKey: recordsKey)
@@ -362,7 +505,8 @@ enum HealthRecordStore {
             latestDisplay: "\(latest.value.value) \(latest.value.unit)".trimmingCharacters(in: .whitespaces),
             baselineText: "Baseline ~\(String(format: "%.2f", baseline))",
             trendLine: matches.count > 1 ? series : "1 report saved",
-            status: latest.value.status
+            status: latest.value.status,
+            series: matches.map(\.numeric)
         )
     }
 

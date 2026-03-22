@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0AD9D35F436EC547D22CFD15 /* DemoPersonaSeeder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C2BF050237CD9B43F48DA77 /* DemoPersonaSeeder.swift */; };
 		1793D16E817D9E5695B772BC /* TrialLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 070BEC0F3DEF8CB4FC7F35F1 /* TrialLabView.swift */; };
 		2673BE5D71D3C27FFBB810B9 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBB4F934CB354262CA314878 /* RootTabView.swift */; };
 		2A9D7C268F7A5F14C9277865 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BB091EC192A8FE3C2EE62AD /* UserProfile.swift */; };
@@ -36,6 +37,7 @@
 		0BB091EC192A8FE3C2EE62AD /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeRepository.swift; sourceTree = "<group>"; };
 		4EE62DB12AD8AFBDCDE3BD66 /* LOOKPOCApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LOOKPOCApp.swift; sourceTree = "<group>"; };
+		5C2BF050237CD9B43F48DA77 /* DemoPersonaSeeder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoPersonaSeeder.swift; sourceTree = "<group>"; };
 		6C261634C1BD32C6A6795AE6 /* SupabaseSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseSyncService.swift; sourceTree = "<group>"; };
 		74C7C4FB6D725883A5FC9D74 /* LOOKPOC.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = LOOKPOC.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		80FCA352FD24F89C15426587 /* DirectoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryView.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 		998779C418A91D58DAB73188 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				5C2BF050237CD9B43F48DA77 /* DemoPersonaSeeder.swift */,
 				ED5897B3C6DDBC499511BD5E /* HealthRecordStore.swift */,
 				26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */,
 				C86897FEA0BF91015ECA34F2 /* PatternEngine.swift */,
@@ -190,6 +193,7 @@
 				8F3F5473057BB3B02298698F /* DailyHealthLog.swift in Sources */,
 				4CF323809CD0D65C8D1D5E66 /* DailyTrial.swift in Sources */,
 				57B4025CB7A9840B6D75EEB5 /* DashboardView.swift in Sources */,
+				0AD9D35F436EC547D22CFD15 /* DemoPersonaSeeder.swift in Sources */,
 				43CDC62174089FC5E51F3762 /* DirectoryView.swift in Sources */,
 				E7402CC5837B178B7741A442 /* DocumentUploadView.swift in Sources */,
 				A1DD8F7A916E480E5ED664CF /* HealthRecordStore.swift in Sources */,

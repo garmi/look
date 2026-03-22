@@ -34,6 +34,8 @@ struct DashboardView: View {
     @State private var medicationHubSnapshot: DashboardMedicationSnapshot = .empty
     @State private var healthRecordSnapshot: HealthRecordSnapshot = .empty
     @State private var visitPackSnapshot: VisitPackSnapshot = .empty
+    @State private var careInsightSnapshot: CareInsightSnapshot = .empty
+    @State private var weeklyTrendSnapshot: WeeklyTrendSnapshot = .empty
     @State private var roadmapSnapshot = StageRoadmapSnapshot(
         title: "Stage roadmap",
         subtitle: "Set your stage in Profile to unlock a focused care plan.",
@@ -73,7 +75,9 @@ struct DashboardView: View {
                     roadmapCard
                     uploadSection
                     labTrendCard
+                    weeklyTrendCard
                     doctorVisitPackCard
+                    careInsightCard
                     insightCard
                     statsRow
                     safetyCard
@@ -563,6 +567,13 @@ struct DashboardView: View {
 
                             Spacer()
 
+                            MiniSparklineView(
+                                values: trend.series,
+                                lineColor: color(forHealthStatus: trend.status)
+                            )
+                            .frame(width: 68, height: 30)
+                            .padding(.top, 4)
+
                             VStack(alignment: .trailing, spacing: 3) {
                                 Text(trend.latestDisplay)
                                     .font(displayFont(15))
@@ -581,6 +592,52 @@ struct DashboardView: View {
                 Text("Discuss with your team: \(healthRecordSnapshot.latestFlaggedValues.joined(separator: ", "))")
                     .font(bodyFont(10))
                     .foregroundStyle(sunriseOrange)
+            }
+        }
+        .modifier(LOOKCard(background: Color(.systemBackground), borderColor: Color.black.opacity(0.06)))
+    }
+
+    private var weeklyTrendCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("WEEKLY SIGNALS")
+                .font(bodyFont(10))
+                .tracking(1.5)
+                .foregroundStyle(mutedSand)
+
+            if weeklyTrendSnapshot.labels.isEmpty {
+                Text("A week of logs will unlock medication and symptom signal graphs.")
+                    .font(bodyFont(11))
+                    .foregroundStyle(mutedSand)
+            } else {
+                trendRow(
+                    title: "Medication adherence",
+                    subtitle: "1 = confirmed, 0 = missed",
+                    values: weeklyTrendSnapshot.medicationValues,
+                    color: sageGreen
+                )
+
+                trendRow(
+                    title: "Daily trial score",
+                    subtitle: "1 to 5, based on your saved daily log",
+                    values: weeklyTrendSnapshot.trialScores,
+                    color: sunriseOrange
+                )
+
+                trendRow(
+                    title: "Check-in stability",
+                    subtitle: "3 = all good, 2 = unsure, 1 = help",
+                    values: weeklyTrendSnapshot.checkinScores,
+                    color: healTeal
+                )
+
+                HStack {
+                    ForEach(weeklyTrendSnapshot.labels, id: \.self) { label in
+                        Text(label)
+                            .font(bodyFont(9))
+                            .foregroundStyle(mutedSand)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
         }
         .modifier(LOOKCard(background: Color(.systemBackground), borderColor: Color.black.opacity(0.06)))
@@ -639,6 +696,42 @@ struct DashboardView: View {
             }
         }
         .modifier(LOOKCard(background: Color(.systemBackground), borderColor: Color.black.opacity(0.06)))
+    }
+
+    private var careInsightCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("INSIGHTS")
+                .font(bodyFont(10))
+                .tracking(1.5)
+                .foregroundStyle(mutedSand)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("For patient")
+                    .font(bodyFont(11, weight: .medium))
+                    .foregroundStyle(healTeal)
+                Text(careInsightSnapshot.patientHeadline)
+                    .font(displayFont(16))
+                    .foregroundStyle(darkInk)
+                Text(careInsightSnapshot.patientBody)
+                    .font(bodyFont(11))
+                    .foregroundStyle(mutedSand)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("For doctor")
+                    .font(bodyFont(11, weight: .medium))
+                    .foregroundStyle(sunriseOrange)
+                Text(careInsightSnapshot.doctorHeadline)
+                    .font(displayFont(16))
+                    .foregroundStyle(darkInk)
+                Text(careInsightSnapshot.doctorBody)
+                    .font(bodyFont(11))
+                    .foregroundStyle(mutedSand)
+            }
+        }
+        .modifier(LOOKCard(background: warmDawn, borderColor: sunriseOrange.opacity(0.12)))
     }
 
     private func uploadTile(
@@ -874,6 +967,29 @@ struct DashboardView: View {
         .buttonStyle(.plain)
     }
 
+    private func trendRow(
+        title: String,
+        subtitle: String,
+        values: [Double],
+        color: Color
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(bodyFont(11, weight: .medium))
+                    .foregroundStyle(darkInk)
+                Text(subtitle)
+                    .font(bodyFont(9))
+                    .foregroundStyle(mutedSand)
+            }
+
+            Spacer()
+
+            MiniSparklineView(values: values, lineColor: color)
+                .frame(width: 112, height: 34)
+        }
+    }
+
     private func refreshDashboardMetrics() {
         let records = HealthRecordStore.loadRecords()
         let pattern = PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
@@ -890,6 +1006,17 @@ struct DashboardView: View {
             healthLogs: healthLogs,
             pattern: pattern,
             records: records
+        )
+        careInsightSnapshot = HealthRecordStore.buildInsights(
+            profile: profiles.first,
+            pattern: pattern,
+            records: records,
+            questions: questions,
+            trials: trials
+        )
+        weeklyTrendSnapshot = HealthRecordStore.buildWeeklyTrendSnapshot(
+            healthLogs: healthLogs,
+            trials: trials
         )
         roadmapSnapshot = HealthRecordStore.roadmap(
             for: profiles.first?.stage ?? .ckd,
@@ -1195,6 +1322,41 @@ private enum DashboardNotificationStatus: String, Codable {
 private let dashboardMedicationKey = "triallab.medications"
 private let dashboardNotificationLogKey = "triallab.notificationLog"
 private let dashboardPendingAcknowledgedKey = "triallab.pendingAcknowledged"
+
+private struct MiniSparklineView: View {
+    let values: [Double]
+    let lineColor: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            let plotted = values.allSatisfy { $0 == 0 } ? [0, 0] : values
+            let minimum = plotted.min() ?? 0
+            let maximum = plotted.max() ?? 1
+            let range = max(maximum - minimum, 0.001)
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(lineColor.opacity(0.08))
+
+                Path { path in
+                    guard !plotted.isEmpty else { return }
+                    for index in plotted.indices {
+                        let x = geometry.size.width * CGFloat(index) / CGFloat(max(plotted.count - 1, 1))
+                        let normalized = (plotted[index] - minimum) / range
+                        let y = geometry.size.height - (geometry.size.height * CGFloat(normalized))
+                        let point = CGPoint(x: x, y: y)
+                        if index == 0 {
+                            path.move(to: point)
+                        } else {
+                            path.addLine(to: point)
+                        }
+                    }
+                }
+                .stroke(lineColor, style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            }
+        }
+    }
+}
 
 private struct LOOKCard: ViewModifier {
     let background: Color
