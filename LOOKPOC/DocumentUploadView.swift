@@ -92,6 +92,7 @@ struct DocumentUploadView: View {
     @State private var selectedImage: UIImage?
     @State private var progress: Double = 0
     @State private var errorMessage: String = ""
+    @State private var sourceDateLabel: String = "Unknown"
 
     enum UploadState {
         case idle
@@ -454,6 +455,9 @@ struct DocumentUploadView: View {
 
         summaryText = json["lookSummary"] as? String ?? ""
         flaggedValues = json["flaggedValues"] as? [String] ?? []
+        sourceDateLabel = documentType == .bloodReport
+            ? (json["reportDate"] as? String ?? "Unknown")
+            : (json["prescribedDate"] as? String ?? "Unknown")
 
         switch documentType {
         case .bloodReport:
@@ -486,21 +490,14 @@ struct DocumentUploadView: View {
     }
 
     func saveToHealthRecord() {
-        let record: [String: Any] = [
-            "type": documentType.title,
-            "date": ISO8601DateFormatter().string(from: Date()),
-            "values": extractedValues.map { [
-                "name": $0.name,
-                "value": $0.value,
-                "unit": $0.unit,
-                "status": $0.status
-            ] },
-            "summary": summaryText
-        ]
-
-        var records = UserDefaults.standard.array(forKey: "lookHealthRecords") as? [[String: Any]] ?? []
-        records.append(record)
-        UserDefaults.standard.set(records, forKey: "lookHealthRecords")
+        let record = HealthRecordStore.makeRecord(
+            type: documentType == .bloodReport ? .bloodReport : .prescription,
+            sourceDateLabel: sourceDateLabel,
+            summary: summaryText,
+            flaggedValues: flaggedValues,
+            extractedValues: extractedValues
+        )
+        HealthRecordStore.append(record)
         uploadState = .saved
     }
 }

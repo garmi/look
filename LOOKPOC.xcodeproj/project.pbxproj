@@ -22,6 +22,7 @@
 		8F3F5473057BB3B02298698F /* DailyHealthLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEEC6444FA5B24831438218C /* DailyHealthLog.swift */; };
 		90463ECAFEA5ED744B027CFB /* LOOKNavBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03B38B5CB67DC7CAA673380 /* LOOKNavBar.swift */; };
 		98580ABFA24A736390B549D1 /* AskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C35C3D63165B704BB0BA671B /* AskView.swift */; };
+		A1DD8F7A916E480E5ED664CF /* HealthRecordStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5897B3C6DDBC499511BD5E /* HealthRecordStore.swift */; };
 		D3D1082C16438B636157276C /* KnowledgeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */; };
 		D71A6F7022E366E03288D27E /* LOOKPOCApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EE62DB12AD8AFBDCDE3BD66 /* LOOKPOCApp.swift */; };
 		E7402CC5837B178B7741A442 /* DocumentUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC3A4CDE27FD6366DCD7CDE8 /* DocumentUploadView.swift */; };
@@ -49,6 +50,7 @@
 		CE6EEF21ED9094D490DB0758 /* TriageEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TriageEngine.swift; sourceTree = "<group>"; };
 		D6ABE3D2B251893C214FFE96 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		DA225586F9B9E977C23A0C1C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ED5897B3C6DDBC499511BD5E /* HealthRecordStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthRecordStore.swift; sourceTree = "<group>"; };
 		FC3A4CDE27FD6366DCD7CDE8 /* DocumentUploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentUploadView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -112,6 +114,7 @@
 		998779C418A91D58DAB73188 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				ED5897B3C6DDBC499511BD5E /* HealthRecordStore.swift */,
 				26557B83252332D42E1ADE69 /* KnowledgeRepository.swift */,
 				C86897FEA0BF91015ECA34F2 /* PatternEngine.swift */,
 				6C261634C1BD32C6A6795AE6 /* SupabaseSyncService.swift */,
@@ -189,6 +192,7 @@
 				57B4025CB7A9840B6D75EEB5 /* DashboardView.swift in Sources */,
 				43CDC62174089FC5E51F3762 /* DirectoryView.swift in Sources */,
 				E7402CC5837B178B7741A442 /* DocumentUploadView.swift in Sources */,
+				A1DD8F7A916E480E5ED664CF /* HealthRecordStore.swift in Sources */,
 				D3D1082C16438B636157276C /* KnowledgeRepository.swift in Sources */,
 				8CFA85F8AD58CF0C4B37A415 /* LOOKEyeMark.swift in Sources */,
 				90463ECAFEA5ED744B027CFB /* LOOKNavBar.swift in Sources */,

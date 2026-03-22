@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
@@ -11,6 +12,11 @@ struct ProfileView: View {
 
     @State private var syncInProgress = false
     @State private var syncFeedback = ""
+    @State private var clipboardFeedback = ""
+    @State private var defaultsRefreshToken = UUID()
+    @AppStorage("profile.caregiverName") private var caregiverName = ""
+    @AppStorage("profile.caregiverRelation") private var caregiverRelation = ""
+    @AppStorage("profile.caregiverContact") private var caregiverContact = ""
 
     var body: some View {
         NavigationStack {
@@ -189,6 +195,49 @@ struct ProfileView: View {
                             }
                         }
 
+                        Section("Stage Roadmap") {
+                            Text(roadmapSnapshot.title)
+                                .font(.subheadline.weight(.medium))
+                            Text(roadmapSnapshot.subtitle)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            ForEach(roadmapSnapshot.actions, id: \.self) { action in
+                                Text("• \(action)")
+                                    .font(.footnote)
+                            }
+                        }
+
+                        Section {
+                            TextField("Caregiver name", text: $caregiverName)
+                            TextField("Relationship", text: $caregiverRelation)
+                            TextField("Phone or WhatsApp", text: $caregiverContact)
+                                .keyboardType(.phonePad)
+
+                            Text(caregiverSnapshot.preview)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+
+                            Button("Copy caregiver update") {
+                                copyToClipboard(caregiverSnapshot.copyText, successMessage: "Caregiver update copied.")
+                            }
+                            .disabled(caregiverSnapshot.copyText.isEmpty)
+
+                            Button("Copy doctor visit pack") {
+                                copyToClipboard(visitPackSnapshot.copyText, successMessage: "Doctor visit pack copied.")
+                            }
+                            .disabled(visitPackSnapshot.copyText.isEmpty)
+
+                            if !clipboardFeedback.isEmpty {
+                                Text(clipboardFeedback)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } header: {
+                            Text("Caregiver Sharing")
+                        } footer: {
+                            Text("Use this to send one consistent update to a trusted caregiver or share your next visit pack before an appointment.")
+                        }
+
                         Section("Safety") {
                             Text("This POC is for educational guidance, workflow trials, and self-tracking. It is not medical advice.")
                                 .font(.footnote)
@@ -204,6 +253,9 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .onAppear {
                 seedDefaultsIfNeeded()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+                defaultsRefreshToken = UUID()
             }
         }
     }
@@ -228,6 +280,78 @@ struct ProfileView: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "1"
         return "v\(version) (\(build))"
+    }
+
+    private var healthRecords: [StoredHealthRecord] {
+        _ = defaultsRefreshToken
+        return HealthRecordStore.loadRecords()
+    }
+
+    private var patternSnapshot: PatternSnapshot {
+        PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
+    }
+
+    private var roadmapSnapshot: StageRoadmapSnapshot {
+        HealthRecordStore.roadmap(for: profiles.first?.stage ?? .ckd, risk: patternSnapshot.riskTier)
+    }
+
+    private var visitPackSnapshot: VisitPackSnapshot {
+        HealthRecordStore.buildVisitPack(
+            profile: profiles.first,
+            questions: questions,
+            trials: trials,
+            healthLogs: healthLogs,
+            pattern: patternSnapshot,
+            records: healthRecords
+        )
+    }
+
+    private var caregiverSnapshot: CaregiverUpdateSnapshot {
+        let todayKey = dayKey(for: Date())
+        let medsConfirmedToday = healthLogs.first(where: { $0.dayKey == todayKey })?.medicationConfirmedAt != nil
+        return HealthRecordStore.buildCaregiverUpdate(
+            profile: profiles.first,
+            pattern: patternSnapshot,
+            records: healthRecords,
+            todayMedicationConfirmed: medsConfirmedToday
+        )
+    }
+
+    private func copyToClipboard(_ text: String, successMessage: String) {
+        guard !text.isEmpty else { return }
+        let decorated = decoratedCopyText(text)
+        UIPasteboard.general.string = decorated
+        clipboardFeedback = successMessage
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+            clipboardFeedback = ""
+        }
+    }
+
+    private func decoratedCopyText(_ text: String) -> String {
+        guard !caregiverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+              !caregiverRelation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+              !caregiverContact.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return text
+        }
+
+        var lines = [text, "", "Caregiver contact"]
+        if !caregiverName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("- Name: \(caregiverName.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !caregiverRelation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("- Relation: \(caregiverRelation.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        if !caregiverContact.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            lines.append("- Contact: \(caregiverContact.trimmingCharacters(in: .whitespacesAndNewlines))")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func dayKey(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar.current
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 
     @MainActor

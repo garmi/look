@@ -32,6 +32,13 @@ struct DashboardView: View {
     @State private var patternSnapshot: PatternSnapshot = .empty
     @State private var trialMetrics: DashboardTrialMetrics = .empty
     @State private var medicationHubSnapshot: DashboardMedicationSnapshot = .empty
+    @State private var healthRecordSnapshot: HealthRecordSnapshot = .empty
+    @State private var visitPackSnapshot: VisitPackSnapshot = .empty
+    @State private var roadmapSnapshot = StageRoadmapSnapshot(
+        title: "Stage roadmap",
+        subtitle: "Set your stage in Profile to unlock a focused care plan.",
+        actions: ["Keep one daily habit active: meds, questions, or uploads."]
+    )
     @State private var pulseQuestions: Bool = false
     @State private var pulseTrials: Bool = false
     @State private var checkinHintVisible: Bool = false
@@ -40,6 +47,7 @@ struct DashboardView: View {
     @State private var insightHintVisible: Bool = true
     @State private var showBloodUpload = false
     @State private var showRxUpload = false
+    @State private var visitPackCopied = false
 
     private let insights: [String] = [
         "Month 1–3 post-transplant is when most patients feel worst but are healing fastest. Trust the process.",
@@ -62,7 +70,10 @@ struct DashboardView: View {
                     checkinCard
                     medicationCard
                     streakBar
+                    roadmapCard
                     uploadSection
+                    labTrendCard
+                    doctorVisitPackCard
                     insightCard
                     statsRow
                     safetyCard
@@ -95,8 +106,8 @@ struct DashboardView: View {
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             refreshDashboardMetrics()
         }
-        .onChange(of: questions.count) { _, newValue in
-            questionCount = newValue
+        .onChange(of: questions.count) { _, _ in
+            refreshDashboardMetrics()
         }
         .onChange(of: trials.count) { _, _ in
             refreshDashboardMetrics()
@@ -104,6 +115,9 @@ struct DashboardView: View {
         .onChange(of: healthLogs.count) { _, _ in
             refreshDashboardMetrics()
             loadTodayState()
+        }
+        .onChange(of: profiles.first?.updatedAt ?? .distantPast) { _, _ in
+            refreshDashboardMetrics()
         }
     }
 
@@ -473,6 +487,160 @@ struct DashboardView: View {
         }
     }
 
+    private var roadmapCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("YOUR ROADMAP")
+                .font(bodyFont(10))
+                .tracking(1.5)
+                .foregroundStyle(mutedSand)
+
+            Text(roadmapSnapshot.title)
+                .font(displayFont(18))
+                .foregroundStyle(darkInk)
+
+            Text(roadmapSnapshot.subtitle)
+                .font(bodyFont(12))
+                .foregroundStyle(mutedSand)
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(roadmapSnapshot.actions, id: \.self) { action in
+                    HStack(alignment: .top, spacing: 8) {
+                        Circle()
+                            .fill(patternAccentColor.opacity(0.85))
+                            .frame(width: 6, height: 6)
+                            .padding(.top, 5)
+
+                        Text(action)
+                            .font(bodyFont(11))
+                            .foregroundStyle(darkInk)
+                    }
+                }
+            }
+        }
+        .modifier(LOOKCard(background: warmDawn, borderColor: patternAccentColor.opacity(0.18)))
+    }
+
+    private var labTrendCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("LAB TRENDS")
+                        .font(bodyFont(10))
+                        .tracking(1.5)
+                        .foregroundStyle(mutedSand)
+
+                    Text(healthRecordSnapshot.latestSummary)
+                        .font(bodyFont(12, weight: .medium))
+                        .foregroundStyle(darkInk)
+                }
+
+                Spacer()
+
+                Text("\(healthRecordSnapshot.totalRecords) record\(healthRecordSnapshot.totalRecords == 1 ? "" : "s")")
+                    .font(bodyFont(10))
+                    .foregroundStyle(healTeal)
+            }
+
+            if healthRecordSnapshot.trendCards.isEmpty {
+                Text("Upload blood reports to see your creatinine, eGFR, tacrolimus, and potassium evolve against your own baseline.")
+                    .font(bodyFont(11))
+                    .foregroundStyle(mutedSand)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(healthRecordSnapshot.trendCards) { trend in
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(trend.metric)
+                                    .font(bodyFont(12, weight: .medium))
+                                    .foregroundStyle(darkInk)
+                                Text(trend.baselineText)
+                                    .font(bodyFont(10))
+                                    .foregroundStyle(mutedSand)
+                                Text(trend.trendLine)
+                                    .font(bodyFont(10))
+                                    .foregroundStyle(mutedSand)
+                            }
+
+                            Spacer()
+
+                            VStack(alignment: .trailing, spacing: 3) {
+                                Text(trend.latestDisplay)
+                                    .font(displayFont(15))
+                                    .foregroundStyle(color(forHealthStatus: trend.status))
+                                Text(trend.status.capitalized)
+                                    .font(bodyFont(10))
+                                    .foregroundStyle(color(forHealthStatus: trend.status))
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+
+            if !healthRecordSnapshot.latestFlaggedValues.isEmpty {
+                Text("Discuss with your team: \(healthRecordSnapshot.latestFlaggedValues.joined(separator: ", "))")
+                    .font(bodyFont(10))
+                    .foregroundStyle(sunriseOrange)
+            }
+        }
+        .modifier(LOOKCard(background: Color(.systemBackground), borderColor: Color.black.opacity(0.06)))
+    }
+
+    private var doctorVisitPackCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("DOCTOR VISIT PACK")
+                        .font(bodyFont(10))
+                        .tracking(1.5)
+                        .foregroundStyle(mutedSand)
+
+                    Text(visitPackSnapshot.headline)
+                        .font(bodyFont(12, weight: .medium))
+                        .foregroundStyle(darkInk)
+                }
+
+                Spacer()
+
+                Button {
+                    guard !visitPackSnapshot.copyText.isEmpty else { return }
+                    UIPasteboard.general.string = visitPackSnapshot.copyText
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        visitPackCopied = true
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            visitPackCopied = false
+                        }
+                    }
+                } label: {
+                    Text(visitPackCopied ? "Copied ✓" : "Copy")
+                        .font(bodyFont(11, weight: .medium))
+                        .foregroundStyle(visitPackCopied ? sageGreen : healTeal)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background((visitPackCopied ? sageGreen : healTeal).opacity(0.10))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(visitPackSnapshot.previewLines, id: \.self) { line in
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("•")
+                            .font(bodyFont(11, weight: .medium))
+                            .foregroundStyle(healTeal)
+                        Text(line)
+                            .font(bodyFont(11))
+                            .foregroundStyle(darkInk)
+                    }
+                }
+            }
+        }
+        .modifier(LOOKCard(background: Color(.systemBackground), borderColor: Color.black.opacity(0.06)))
+    }
+
     private func uploadTile(
         icon: String,
         title: String,
@@ -707,11 +875,26 @@ struct DashboardView: View {
     }
 
     private func refreshDashboardMetrics() {
+        let records = HealthRecordStore.loadRecords()
+        let pattern = PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
         questionCount = questions.count
         trialCount = trials.count
-        patternSnapshot = PatternEngine.analyze(healthLogs: healthLogs, trials: trials)
+        patternSnapshot = pattern
         trialMetrics = buildTrialMetrics(from: trials)
         medicationHubSnapshot = loadMedicationHubSnapshot()
+        healthRecordSnapshot = HealthRecordStore.buildSnapshot(records: records)
+        visitPackSnapshot = HealthRecordStore.buildVisitPack(
+            profile: profiles.first,
+            questions: questions,
+            trials: trials,
+            healthLogs: healthLogs,
+            pattern: pattern,
+            records: records
+        )
+        roadmapSnapshot = HealthRecordStore.roadmap(
+            for: profiles.first?.stage ?? .ckd,
+            risk: pattern.riskTier
+        )
     }
 
     private func buildTrialMetrics(from trials: [DailyTrial]) -> DashboardTrialMetrics {
@@ -916,6 +1099,19 @@ struct DashboardView: View {
             return Color(red: 0.96, green: 0.76, blue: 0.50)
         case .help:
             return Color(red: 0.96, green: 0.57, blue: 0.57)
+        }
+    }
+
+    private func color(forHealthStatus status: String) -> Color {
+        switch status {
+        case "normal":
+            return sageGreen
+        case "low", "high":
+            return sunriseOrange
+        case "critical":
+            return Color(red: 0.96, green: 0.57, blue: 0.57)
+        default:
+            return darkInk
         }
     }
 }
