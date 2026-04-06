@@ -41,6 +41,63 @@ flowchart LR
     SD --> UI
 ```
 
+## Live Architecture For Test Users
+
+When we take LOOK live for beta users, the app should move from local-only storage to a managed backend.
+
+Simple view:
+- the `iPhone app` stays the user-facing product
+- `Supabase Auth` handles sign-in
+- `Supabase Postgres` stores structured user data
+- `Supabase Storage` stores uploaded reports and exported PDFs
+- `Supabase Edge Functions` handle secure backend logic like AI extraction and doctor summaries
+- analytics and crash reporting sit alongside the product, not inside the core DB
+
+```mermaid
+flowchart TB
+    APP["LOOK iPhone App"]
+
+    subgraph SUPABASE["Supabase Project"]
+        AUTH["Auth\nSign-in / user identity"]
+        DB["Postgres Database\nprofiles, logs, questions, labs, insights"]
+        STORAGE["Private Storage\nblood reports, prescriptions, exports"]
+        API["Edge Functions\nAI parsing, summaries, notifications"]
+    end
+
+    ANALYTICS["PostHog\nproduct analytics"]
+    ERRORS["Sentry\ncrashes and beta feedback"]
+    AI["AI Provider\nClaude / OpenAI"]
+
+    APP --> AUTH
+    APP --> DB
+    APP --> STORAGE
+    APP --> API
+    APP --> ANALYTICS
+    APP --> ERRORS
+
+    API --> DB
+    API --> STORAGE
+    API --> AI
+```
+
+### Where The Data Sits
+
+| Data type | Where it lives |
+|---|---|
+| User profile, check-ins, meds, trials, questions | `Supabase Postgres` |
+| Blood reports, prescriptions, exported PDFs | `Supabase Storage` |
+| AI extraction results, normalized lab values, doctor summaries | `Supabase Postgres` |
+| Secure AI/API logic | `Supabase Edge Functions` |
+| Product analytics events | `PostHog` |
+| Crash reports and tester feedback | `Sentry` |
+
+### Why This Setup
+
+- fast enough for beta without building custom infrastructure
+- secure enough to keep AI keys and sensitive logic off the phone
+- easy to scale from a few users to hundreds of testers
+- keeps the data model clean so charts, trends, and doctor summaries are queryable later
+
 ## Run It
 
 For iPhone setup and general Xcode launch:
