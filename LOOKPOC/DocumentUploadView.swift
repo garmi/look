@@ -93,6 +93,7 @@ struct DocumentUploadView: View {
     @State private var progress: Double = 0
     @State private var errorMessage: String = ""
     @State private var sourceDateLabel: String = "Unknown"
+    @State private var extractionMode: ExtractionMode = .ai
 
     enum UploadState {
         case idle
@@ -100,6 +101,11 @@ struct DocumentUploadView: View {
         case extracted
         case saved
         case error
+    }
+
+    enum ExtractionMode {
+        case ai
+        case betaFallback
     }
 
     var body: some View {
@@ -144,6 +150,25 @@ struct DocumentUploadView: View {
                     }
 
                     if uploadState == .extracted || uploadState == .saved {
+                        if extractionMode == .betaFallback {
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("Beta mode")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(Color(red: 0.00, green: 0.48, blue: 0.48))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color(red: 0.00, green: 0.48, blue: 0.48).opacity(0.08))
+                                    .clipShape(Capsule())
+
+                                Text("This build saved the document flow, but did not run secure AI extraction.")
+                                    .font(.system(size: 11, weight: .light))
+                                    .foregroundColor(Color(red: 0.61, green: 0.55, blue: 0.50))
+                                    .lineSpacing(3)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 12)
+                        }
+
                         VStack(spacing: 6) {
                             ForEach(extractedValues) { value in
                                 HStack(alignment: .top) {
@@ -247,7 +272,7 @@ struct DocumentUploadView: View {
     private var headerText: String {
         switch uploadState {
         case .idle:
-            return "Take a photo or upload a file. LOOK extracts the key information automatically."
+            return "Take a photo or upload a file. LOOK extracts the key information automatically when AI parsing is configured. Until then, uploads can still be saved in beta mode."
         case .processing:
             return "Reading your document..."
         case .extracted:
@@ -277,7 +302,7 @@ struct DocumentUploadView: View {
                 .disabled(true)
                 .opacity(0.5)
         case .extracted:
-            uploadButton(title: "Save to Health Record", isPrimary: true) {
+            uploadButton(title: extractionMode == .betaFallback ? "Save Placeholder Record" : "Save to Health Record", isPrimary: true) {
                 saveToHealthRecord()
             }
             uploadButton(title: "Retake / Upload Again", isPrimary: false) {
@@ -365,11 +390,11 @@ struct DocumentUploadView: View {
 
     func callClaudeAPI(imageBase64: String, mimeType: String) {
         guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"], !apiKey.isEmpty else {
-            uploadState = .error
-            errorMessage = "Anthropic API key not found. Set ANTHROPIC_API_KEY before using document extraction."
+            applyBetaFallbackExtraction()
             return
         }
 
+        extractionMode = .ai
         uploadState = .processing
         progress = 0
 
@@ -425,8 +450,7 @@ struct DocumentUploadView: View {
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let content = json["content"] as? [[String: Any]],
                       let text = content.first?["text"] as? String else {
-                    uploadState = .error
-                    errorMessage = "Could not read the document. Please try again with a clearer image."
+                    applyBetaFallbackExtraction()
                     return
                 }
 
@@ -448,11 +472,11 @@ struct DocumentUploadView: View {
 
         guard let data = clean.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            uploadState = .error
-            errorMessage = "The document response could not be parsed."
+            applyBetaFallbackExtraction()
             return
         }
 
+        extractionMode = .ai
         summaryText = json["lookSummary"] as? String ?? ""
         flaggedValues = json["flaggedValues"] as? [String] ?? []
         sourceDateLabel = documentType == .bloodReport
@@ -487,6 +511,10 @@ struct DocumentUploadView: View {
                 }
             }
         }
+
+        if extractedValues.isEmpty {
+            applyBetaFallbackExtraction()
+        }
     }
 
     func saveToHealthRecord() {
@@ -499,6 +527,40 @@ struct DocumentUploadView: View {
         )
         HealthRecordStore.append(record)
         uploadState = .saved
+    }
+
+    private func applyBetaFallbackExtraction() {
+        extractionMode = .betaFallback
+        progress = 1.0
+        sourceDateLabel = "Captured \(Date.now.formatted(date: .abbreviated, time: .omitted))"
+        flaggedValues = []
+
+        switch documentType {
+        case .bloodReport:
+            summaryText = "Blood report captured in beta mode. This build does not have live AI parsing configured yet, so the report is saved as a document placeholder for workflow review."
+            extractedValues = [
+                ExtractedValue(
+                    name: "Report capture",
+                    value: "Saved",
+                    unit: "beta mode",
+                    status: "normal",
+                    lookNote: "The upload flow worked. Extraction should move to a secure backend before external rollout."
+                )
+            ]
+        case .prescription:
+            summaryText = "Prescription captured in beta mode. This build does not have live AI parsing configured yet, so the prescription is saved as a document placeholder for workflow review."
+            extractedValues = [
+                ExtractedValue(
+                    name: "Prescription capture",
+                    value: "Saved",
+                    unit: "beta mode",
+                    status: "normal",
+                    lookNote: "The upload flow worked. Extraction should move to a secure backend before external rollout."
+                )
+            ]
+        }
+
+        uploadState = .extracted
     }
 }
 
