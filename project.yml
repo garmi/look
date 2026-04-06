@@ -6,6 +6,8 @@ settings:
   base:
     SWIFT_VERSION: 5.0
     PRODUCT_BUNDLE_IDENTIFIER: com.look.poc
+    MARKETING_VERSION: 0.9.0
+    CURRENT_PROJECT_VERSION: 1
 targets:
   LOOKPOC:
     type: application
@@ -16,16 +18,28 @@ targets:
     info:
       path: LOOKPOC/Info.plist
       properties:
-        CFBundleDisplayName: LOOK POC
+        CFBundleDisplayName: LOOK
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: LOOK uses your camera to photograph blood reports and prescriptions for automatic data extraction.
         NSPhotoLibraryUsageDescription: LOOK accesses your photos to upload blood reports and prescriptions.
         NSPhotoLibraryAddUsageDescription: LOOK may save processed documents to your photo library.
         UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
     settings:
       base:
         TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 schemes:
   LOOKPOC:
     build:
