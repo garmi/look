@@ -106,6 +106,9 @@ LOOK should help turn daily health noise into doctor-ready clarity.
 - `Trials` should merge into `Track`
 - the app should feel like one continuous care workflow
 
+Low-fidelity reference:
+- [v0.2 wireframes](/Users/gauravm/Documents/New%20project/docs/WIREFRAMES_V0_2.md)
+
 ## Experience Diagram
 
 ```mermaid

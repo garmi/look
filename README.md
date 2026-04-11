@@ -15,6 +15,7 @@ Core idea:
 
 Start here for the current product framing and visuals:
 - [Product Prototype v0.2](/Users/gauravm/Documents/New%20project/docs/PRODUCT_PROTOTYPE_V0_2.md)
+- [v0.2 low-fidelity wireframes](/Users/gauravm/Documents/New%20project/docs/WIREFRAMES_V0_2.md)
 
 ## What Supabase Sync Would Do
 
