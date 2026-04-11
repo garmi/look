@@ -4,6 +4,18 @@ This repository is now the main workspace for the LOOK iOS proof of concept.
 
 The app is an offline-first `SwiftUI` + `SwiftData` prototype for daily personal trials. It lets you capture transplant-related questions, test a local triage flow, browse starter knowledge and directory data, and log daily friction so we can improve the product from real usage.
 
+## Product Prototype v0.2
+
+The product direction has been reframed as `Product Prototype v0.2`: less noisy, more generic, and more patient-centric.
+
+Core idea:
+- an AI-enabled app in the patient's hand
+- helps the patient organize what happened
+- helps the patient speak to the doctor with more clarity
+
+Start here for the current product framing and visuals:
+- [Product Prototype v0.2](/Users/gauravm/Documents/New%20project/docs/PRODUCT_PROTOTYPE_V0_2.md)
+
 ## What Supabase Sync Would Do
 
 Option `2` from earlier means adding `Supabase` as the backend so the app stops being local-only.
